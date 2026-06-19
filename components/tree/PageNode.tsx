@@ -3,6 +3,7 @@
 import { useUiStore } from '@/stores/uiStore'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { ColorSwatch } from '@/components/ui/ColorSwatch'
+import { PageNodeMenu } from './PageNodeMenu'
 import type { PageNode as PageNodeType } from '@/types'
 
 interface Props {
@@ -103,6 +104,9 @@ export function PageNode({ node, depth, gscClicks }: Props) {
 
         {/* Status badge */}
         <StatusBadge status={node.status} size="xs" />
+
+        {/* Context menu */}
+        <PageNodeMenu node={node} />
       </div>
 
       {/* Children */}

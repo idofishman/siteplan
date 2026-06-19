@@ -2,12 +2,16 @@
 
 import { useAccountStore } from '@/stores/accountStore'
 import { useTreeStore } from '@/stores/treeStore'
+import { useUiStore } from '@/stores/uiStore'
 import { PageTree } from '@/components/tree/PageTree'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
+import { AddEditPageModal } from '@/components/modals/AddEditPageModal'
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal'
 
 export default function AppPage() {
   const { activeAccount } = useAccountStore()
   const { saveStatus } = useTreeStore()
+  const { openModal } = useUiStore()
 
   if (!activeAccount) return null
 
@@ -20,10 +24,9 @@ export default function AppPage() {
           <SaveIndicator status={saveStatus} />
         </div>
         <div className="flex items-center gap-2">
-          {/* Phase 5 will add the "+ הוסף עמוד" button here */}
           <button
-            disabled
-            className="text-sm px-3 py-1.5 rounded-lg bg-slate-800 text-white opacity-40 cursor-not-allowed"
+            onClick={() => openModal('addPage', {})}
+            className="text-sm px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white transition-colors"
           >
             + הוסף עמוד
           </button>
@@ -34,6 +37,10 @@ export default function AppPage() {
       <div className="flex-1 overflow-auto px-2 py-2">
         <PageTree accountId={activeAccount.id} />
       </div>
+
+      {/* Modals */}
+      <AddEditPageModal />
+      <DeleteConfirmModal />
     </div>
   )
 }

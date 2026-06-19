@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { verifyAccountAccess } from '@/lib/utils/auth'
 import { normalizeUrl } from '@/lib/utils/url'
+import { logActivity } from '@/lib/utils/activity'
 import type { Page } from '@/types'
 
 export async function GET(request: Request) {
@@ -65,5 +66,17 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase.from('pages').insert(row).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).single()
+  await logActivity(supabase, {
+    account_id,
+    user_id: user.id,
+    user_name: profile?.display_name ?? user.id,
+    action: 'page_created',
+    entity_type: 'page',
+    entity_id: data.id,
+    entity_name: data.name,
+  })
+
   return NextResponse.json(data, { status: 201 })
 }
