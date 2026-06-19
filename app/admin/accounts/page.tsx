@@ -7,7 +7,7 @@ interface AccountRow {
   id: string
   name: string
   domain: string | null
-  status: string
+  is_active: boolean
   created_at: string
 }
 
@@ -29,13 +29,13 @@ export default function AdminAccountsPage() {
   useEffect(() => { load() }, [])
 
   async function handleToggleStatus(account: AccountRow) {
-    const nextStatus = account.status === 'active' ? 'inactive' : 'active'
+    const nextActive = !account.is_active
     await fetch(`/api/admin/accounts/${account.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: nextStatus }),
+      body: JSON.stringify({ is_active: nextActive }),
     })
-    setAccounts(prev => prev.map(a => a.id === account.id ? { ...a, status: nextStatus } : a))
+    setAccounts(prev => prev.map(a => a.id === account.id ? { ...a, is_active: nextActive } : a))
   }
 
   async function handleCreate() {
@@ -117,12 +117,12 @@ export default function AdminAccountsPage() {
                     <button
                       onClick={() => handleToggleStatus(a)}
                       className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${
-                        a.status === 'active'
+                        a.is_active
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
                           : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                       }`}
                     >
-                      {a.status === 'active' ? 'פעיל' : 'לא פעיל'}
+                      {a.is_active ? 'פעיל' : 'לא פעיל'}
                     </button>
                   </td>
                   <td className="px-4 py-3 text-slate-400 text-xs">{new Date(a.created_at).toLocaleDateString('he-IL')}</td>

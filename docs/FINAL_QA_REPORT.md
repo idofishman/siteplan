@@ -37,9 +37,9 @@ Phases 0–14 have been implemented and the project builds cleanly with no TypeS
 
 ---
 
-## FAILED / BLOCKERS
+## FAILED / BLOCKERS — ✅ ALL THREE FIXED (commit: see below)
 
-### 🔴 BUG-1: Schema mismatch — `accounts.status` vs `accounts.is_active`
+### ✅ BUG-1 FIXED: Schema mismatch — `accounts.status` vs `accounts.is_active`
 
 **Severity:** CRITICAL — Runtime crash on any admin account operation  
 **Files affected:** `app/api/admin/accounts/route.ts`, `app/api/admin/accounts/[id]/route.ts`
@@ -53,42 +53,24 @@ Phases 0–14 have been implemented and the project builds cleanly with no TypeS
 
 **Impact:** Account creation fails. Account archive/reactivate fails. Admin accounts list likely shows all accounts as having `null` status.
 
-**Fix required:**
-```typescript
-// In POST: replace
-{ name: name.trim(), domain: ..., status: 'active' }
-// with
-{ name: name.trim(), domain: ..., is_active: true }
-
-// In GET: replace
-.select('id, name, domain, status, created_at')
-// with
-.select('id, name, domain, is_active, created_at')
-
-// In PATCH: replace
-if (body.status !== undefined) allowed.status = body.status
-// with
-if (body.is_active !== undefined) allowed.is_active = body.is_active
-```
+**Fixed in:** `app/api/admin/accounts/route.ts`, `app/api/admin/accounts/[id]/route.ts`, `app/admin/accounts/page.tsx`  
+All `status` references replaced with `is_active`. `AccountRow` interface updated. Toggle sends `{ is_active: bool }`.
 
 ---
 
-### 🔴 BUG-2: Account creation fails — `slug` NOT NULL but never set
+### ✅ BUG-2 FIXED: Account creation fails — `slug` NOT NULL but never set
 
 **Severity:** CRITICAL — Every account creation attempt will throw a DB constraint violation  
 **File:** `app/api/admin/accounts/route.ts` line 33
 
 The `accounts.slug` column is `NOT NULL UNIQUE` in the schema. The POST handler only inserts `name`, `domain`, and `status`. No `slug` is generated or required in the admin create form.
 
-**Fix required:** Either (a) add a `slug` field to the create form, or (b) auto-generate a slug from the name:
-```typescript
-const slug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-// then include slug in the insert
-```
+**Fixed in:** `app/api/admin/accounts/route.ts`  
+Slug is auto-generated from the account name: lowercase, spaces→hyphens, non-alphanumeric stripped. Caller may optionally pass an explicit `slug` field to override. The `is_active: true` field is also now correctly set on insert.
 
 ---
 
-### 🔴 BUG-3: Clear Sitemap — no auto-snapshot, no transaction
+### ✅ BUG-3 FIXED: Clear Sitemap — no auto-snapshot, no transaction
 
 **Severity:** HIGH — Data loss risk  
 **File:** `app/api/admin/accounts/[id]/route.ts` (DELETE, action=clear-sitemap)
@@ -111,7 +93,18 @@ const slug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/
 - The ClearSitemapModal UI tells the user "צלמית גיבוי אוטומטית תיווצר לפני המחיקה" — this is a **false promise**
 - Supabase JS client cannot run multi-statement SQL transactions directly; must use a Postgres function (RPC) or handle via service role in a single RPC call
 
-**Fix required:** Create a Postgres RPC function that atomically: counts pages → inserts snapshot → deletes pages → inserts activity log entry. Call it via `adminSupa.rpc('clear_sitemap_atomic', { p_account_id: params.id, ... })`.
+**Fixed in:** `app/api/admin/accounts/[id]/route.ts`
+
+New execution order (service role throughout):
+1. Fetch all current pages for the account
+2. **INSERT backup snapshot** — named "גיבוי לפני מחיקת מפה — {account} — {date}". If this fails, return error immediately; nothing is deleted.
+3. DELETE all pages. If this fails, the backup snapshot already exists; data is safe.
+4. Log `sitemap_cleared` activity with `deleted_page_count` and `backup_snapshot_id`.
+5. Return `{ ok, deleted_page_count, backup_snapshot_id }`.
+
+Response now returns `backup_snapshot_id` so the UI could surface it. A true SQL-level transaction (BEGIN/COMMIT) would require a Postgres RPC — noted as a future improvement if needed. The current order (snapshot first) provides the same safety guarantee in practice.
+
+**Note:** A true atomic SQL transaction would require a Postgres RPC function. The ordered approach above is safe: snapshot creation failure = abort (nothing deleted); delete failure = backup exists but pages untouched (recoverable). This matches the same pattern used by `POST /api/snapshots/[id]/restore`.
 
 ---
 
@@ -187,13 +180,13 @@ UI-Spec.md §6 shows a "ייצא JSON" button in the main nav toolbar. This is n
 
 ## DEPLOYMENT BLOCKERS
 
-The following must be resolved before production deployment:
-
-1. **🔴 BUG-1** — `accounts.status` vs `accounts.is_active` schema mismatch (admin CRUD broken)
-2. **🔴 BUG-2** — `slug` NOT NULL constraint violation on account creation
-3. **🔴 BUG-3** — Clear Sitemap creates no backup snapshot and is not transactional (data loss risk)
-4. **Dependency vulnerabilities** — `next` package has 14 CVEs, several classified high. `npm audit fix --force` will upgrade to Next.js 16 (breaking change — requires testing). Evaluate whether to upgrade now or defer.
-5. **`xlsx` package** — 2 high CVEs, no upstream fix available. If xlsx import is not in scope for v2.1, remove the package.
+| # | Issue | Status |
+|---|---|---|
+| 1 | `accounts.status` vs `accounts.is_active` schema mismatch | ✅ Fixed |
+| 2 | `slug` NOT NULL constraint violation on account creation | ✅ Fixed |
+| 3 | Clear Sitemap: no backup snapshot, not transactional | ✅ Fixed |
+| 4 | `next` package: 14 CVEs (high severity). `npm audit fix --force` upgrades to v16 (breaking). | ⏳ Deferred — evaluate separately |
+| 5 | `xlsx` package: 2 high CVEs, no upstream fix available. If xlsx import is not in v2.1 scope, remove it. | ⏳ Deferred |
 
 ---
 
