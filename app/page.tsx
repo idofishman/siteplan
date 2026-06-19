@@ -1,7 +1,13 @@
-export default function RootPage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-blue-500 text-xl">מנהל מבנה האתר — Phase 0</p>
-    </main>
-  )
+import { redirect } from 'next/navigation'
+import { createServerClient } from '@/lib/supabase/server'
+
+export default async function RootPage() {
+  const supabase = createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  redirect('/app')
 }

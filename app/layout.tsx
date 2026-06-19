@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { AuthProvider } from '@/components/auth/AuthProvider'
 
 export const metadata: Metadata = {
   title: 'מנהל מבנה האתר',
@@ -13,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   )
 }
