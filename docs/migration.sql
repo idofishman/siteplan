@@ -297,7 +297,37 @@ CREATE INDEX idx_import_jobs_status          ON import_jobs(account_id, status);
 -- =============================================================================
 -- PASS B — ENABLE RLS AND CREATE ALL POLICIES
 -- All 9 tables now exist. Safe to reference any table in any policy.
+--
+-- IMPORTANT: All system_admin checks use the is_system_admin() SECURITY
+-- DEFINER helper below. Direct subqueries into `profiles` from within
+-- `profiles` policies cause 42P17 infinite recursion — PostgREST returns
+-- HTTP 500 on every anon request. The helper bypasses RLS on profiles.
 -- =============================================================================
+
+
+-- -----------------------------------------------------------------------------
+-- B-0: RLS helper functions (SECURITY DEFINER — bypass RLS on profiles)
+-- Must be created before any policy references them.
+-- -----------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION is_system_admin()
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid()
+    AND role = 'system_admin'
+  )
+$$;
+
+-- Used by own_profile_update to prevent role self-escalation without recursion
+CREATE OR REPLACE FUNCTION get_my_role()
+RETURNS text
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+  SELECT role FROM profiles WHERE id = auth.uid()
+$$;
 
 
 -- -----------------------------------------------------------------------------
@@ -309,13 +339,7 @@ ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 -- System admins can read and write all accounts (active or inactive)
 CREATE POLICY "system_admin_all_accounts"
   ON accounts FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 -- Regular users can only see active accounts they are explicitly assigned to
 CREATE POLICY "user_assigned_accounts"
@@ -341,25 +365,19 @@ CREATE POLICY "own_profile_select"
   ON profiles FOR SELECT
   USING (id = auth.uid());
 
--- Users can update their own profile but cannot change their own role
+-- Users can update their own display_name but cannot change their own role
 CREATE POLICY "own_profile_update"
   ON profiles FOR UPDATE
   USING (id = auth.uid())
   WITH CHECK (
     id = auth.uid()
-    AND role = (SELECT role FROM profiles WHERE id = auth.uid())
+    AND (is_system_admin() OR role = get_my_role())
   );
 
 -- System admins can read and write all profiles
 CREATE POLICY "system_admin_all_profiles"
   ON profiles FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 -- Users in the same account can read each other's display_name
 -- (required for activity feed and presence display)
@@ -385,13 +403,7 @@ ALTER TABLE user_accounts ENABLE ROW LEVEL SECURITY;
 -- System admins can manage all user-account assignments
 CREATE POLICY "system_admin_all_user_accounts"
   ON user_accounts FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 -- Users can read their own assignments (to know which accounts they belong to)
 CREATE POLICY "user_own_assignments_select"
@@ -409,13 +421,7 @@ ALTER TABLE pages ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "system_admin_all_pages"
   ON pages FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 CREATE POLICY "user_account_pages_select"
   ON pages FOR SELECT
@@ -466,13 +472,7 @@ ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "system_admin_all_activity"
   ON activity_log FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 CREATE POLICY "user_account_activity_select"
   ON activity_log FOR SELECT
@@ -496,13 +496,7 @@ ALTER TABLE snapshots ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "system_admin_all_snapshots"
   ON snapshots FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 CREATE POLICY "user_account_snapshots_select"
   ON snapshots FOR SELECT
@@ -545,13 +539,7 @@ ALTER TABLE gsc_clicks ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "system_admin_all_gsc"
   ON gsc_clicks FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 CREATE POLICY "user_account_gsc_select"
   ON gsc_clicks FOR SELECT
@@ -579,11 +567,7 @@ CREATE POLICY "user_account_presence_select"
       WHERE user_accounts.user_id = auth.uid()
       AND user_accounts.account_id = presence.account_id
     )
-    OR EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
+    OR is_system_admin()
   );
 
 -- Users can only upsert/update/delete their own presence row.
@@ -608,13 +592,7 @@ ALTER TABLE import_jobs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "system_admin_all_import_jobs"
   ON import_jobs FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'system_admin'
-    )
-  );
+  USING (is_system_admin());
 
 CREATE POLICY "user_account_import_jobs_all"
   ON import_jobs FOR ALL
