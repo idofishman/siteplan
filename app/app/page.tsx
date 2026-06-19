@@ -7,6 +7,7 @@ import { PageTree } from '@/components/tree/PageTree'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { AddEditPageModal } from '@/components/modals/AddEditPageModal'
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal'
+import { MoveConfirmModal } from '@/components/modals/MoveConfirmModal'
 
 export default function AppPage() {
   const { activeAccount } = useAccountStore()
@@ -41,6 +42,7 @@ export default function AppPage() {
       {/* Modals */}
       <AddEditPageModal />
       <DeleteConfirmModal />
+      <MoveConfirmModal />
     </div>
   )
 }
