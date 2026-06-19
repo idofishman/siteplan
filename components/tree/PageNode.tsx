@@ -34,17 +34,29 @@ function GscIndicator({ clicks }: { clicks: number }) {
 }
 
 export function PageNode({ node, depth, gscClicks }: Props) {
-  const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect } = useUiStore()
+  const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal } = useUiStore()
   const isExpanded = expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
   const hasChildren = node.children.length > 0
   const clicks = node.url_normalized ? (gscClicks[node.url_normalized] ?? 0) : 0
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') openModal('editPage', node)
+    if (e.key === 'Delete' || e.key === 'Backspace') openModal('deletePage', { pageId: node.id, pageName: node.name })
+    if (e.key === ' ') { e.preventDefault(); toggleSelect(node.id) }
+  }
+
   return (
     <div>
       <div
+        id={`page-node-${node.id}`}
+        tabIndex={0}
+        role="treeitem"
+        aria-selected={isSelected}
+        aria-expanded={hasChildren ? isExpanded : undefined}
+        onKeyDown={handleKeyDown}
         className={`
-          group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors
+          group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
           ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
         `}
         style={{ paddingRight: `${depth * 20 + 12}px` }}

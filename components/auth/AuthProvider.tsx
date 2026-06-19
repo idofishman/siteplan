@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
@@ -15,6 +16,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -22,8 +25,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
+      // Redirect to login on session expiry while inside the app
+      if (event === 'SIGNED_OUT' && (pathname.startsWith('/app') || pathname.startsWith('/admin'))) {
+        router.push('/login')
+      }
     })
 
     return () => subscription.unsubscribe()

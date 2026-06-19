@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
+import { ToastContainer } from '@/components/ui/Toast'
 
 export const metadata: Metadata = {
   title: 'מנהל מבנה האתר',
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="he" dir="rtl">
       <body>
         <AuthProvider>{children}</AuthProvider>
+        <ToastContainer />
       </body>
     </html>
   )
