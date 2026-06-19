@@ -8,6 +8,8 @@ import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { AddEditPageModal } from '@/components/modals/AddEditPageModal'
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal'
 import { MoveConfirmModal } from '@/components/modals/MoveConfirmModal'
+import { BulkToolbar } from '@/components/tree/BulkToolbar'
+import { BulkActionModal } from '@/components/modals/BulkActionModal'
 
 export default function AppPage() {
   const { activeAccount } = useAccountStore()
@@ -34,6 +36,9 @@ export default function AppPage() {
         </div>
       </div>
 
+      {/* Bulk selection toolbar */}
+      <BulkToolbar />
+
       {/* Tree */}
       <div className="flex-1 overflow-auto px-2 py-2">
         <PageTree accountId={activeAccount.id} />
@@ -43,6 +48,7 @@ export default function AppPage() {
       <AddEditPageModal />
       <DeleteConfirmModal />
       <MoveConfirmModal />
+      <BulkActionModal />
     </div>
   )
 }
