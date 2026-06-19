@@ -1,11 +1,11 @@
--- =============================================================================
--- RLS Recursion Fix — apply to existing database after initial migration
+﻿-- =============================================================================
+-- RLS Recursion Fix â€” apply to existing database after initial migration
 -- Date: 2026-06-20
 -- Issue: 42P17 infinite recursion in all 9 tables' RLS policies
 --
 -- Root cause:
 --   The "system_admin_all_profiles" policy on the `profiles` table used
---   EXISTS (SELECT 1 FROM profiles ...) — a policy on a table reading
+--   EXISTS (SELECT 1 FROM profiles ...) â€” a policy on a table reading
 --   from the same table. Postgres RLS evaluates this recursively forever.
 --
 --   Every other table has a "system_admin_all_X" policy that reads from
@@ -16,7 +16,7 @@
 --   Two SECURITY DEFINER helper functions break the recursion by reading
 --   `profiles` without RLS enforcement (they run as the defining role).
 --
--- Run this in: Supabase Dashboard → SQL Editor → New Query
+-- Run this in: Supabase Dashboard â†’ SQL Editor â†’ New Query
 -- =============================================================================
 
 
@@ -24,25 +24,23 @@
 -- Step 1: Helper functions (SECURITY DEFINER bypasses RLS on profiles)
 -- -----------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION public.is_system_admin()
+CREATE OR REPLACE FUNCTION is_system_admin()
 RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE
-SET search_path = public
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.profiles
+    SELECT 1 FROM profiles
     WHERE id = auth.uid()
     AND role = 'system_admin'
   )
 $$;
 
 -- Used in own_profile_update to prevent role self-escalation without recursion
-CREATE OR REPLACE FUNCTION public.get_my_role()
+CREATE OR REPLACE FUNCTION get_my_role()
 RETURNS text
 LANGUAGE sql SECURITY DEFINER STABLE
-SET search_path = public
 AS $$
-  SELECT role FROM public.profiles WHERE id = auth.uid()
+  SELECT role FROM profiles WHERE id = auth.uid()
 $$;
 
 
@@ -165,7 +163,7 @@ CREATE POLICY "system_admin_all_import_jobs"
 
 -- -----------------------------------------------------------------------------
 -- Verification: confirm no more recursion by selecting from each table as anon
--- (Run these in a separate query using the anon key via Dashboard → API)
+-- (Run these in a separate query using the anon key via Dashboard â†’ API)
 -- Or confirm by re-running the verification probe.
 -- -----------------------------------------------------------------------------
 

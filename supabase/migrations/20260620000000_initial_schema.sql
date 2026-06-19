@@ -1,7 +1,7 @@
--- =============================================================================
--- Colman Site Structure Manager v2 — Full Database Migration
+﻿-- =============================================================================
+-- Colman Site Structure Manager v2 â€” Full Database Migration
 -- Version: 2.1.1
--- Run in Supabase Dashboard → SQL Editor → New Query
+-- Run in Supabase Dashboard â†’ SQL Editor â†’ New Query
 --
 -- STRATEGY: Two-pass migration.
 --   Pass A: Create all tables and triggers (no RLS yet).
@@ -15,12 +15,12 @@
 
 
 -- =============================================================================
--- PASS A — CREATE ALL TABLES (NO RLS)
+-- PASS A â€” CREATE ALL TABLES (NO RLS)
 -- =============================================================================
 
 
 -- -----------------------------------------------------------------------------
--- A-1: Shared trigger function (run FIRST — used by multiple tables)
+-- A-1: Shared trigger function (run FIRST â€” used by multiple tables)
 -- -----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -73,17 +73,17 @@ CREATE TRIGGER trg_profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, display_name)
+  INSERT INTO profiles (id, display_name)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TRIGGER trg_on_auth_user_created
   AFTER INSERT ON auth.users
@@ -91,7 +91,7 @@ CREATE TRIGGER trg_on_auth_user_created
 
 
 -- -----------------------------------------------------------------------------
--- A-4: user_accounts (many-to-many: users ↔ accounts)
+-- A-4: user_accounts (many-to-many: users â†” accounts)
 -- -----------------------------------------------------------------------------
 
 CREATE TABLE user_accounts (
@@ -181,7 +181,7 @@ CREATE TABLE activity_log (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- No updated_at — activity_log rows are immutable after insert.
+-- No updated_at â€” activity_log rows are immutable after insert.
 
 CREATE INDEX idx_activity_log_account_id      ON activity_log(account_id);
 CREATE INDEX idx_activity_log_account_created ON activity_log(account_id, created_at DESC);
@@ -204,7 +204,7 @@ CREATE TABLE snapshots (
   data             jsonb NOT NULL
 );
 
--- No updated_at or UPDATE trigger — snapshots are immutable after creation.
+-- No updated_at or UPDATE trigger â€” snapshots are immutable after creation.
 
 CREATE INDEX idx_snapshots_account_id      ON snapshots(account_id);
 CREATE INDEX idx_snapshots_account_created ON snapshots(account_id, created_at DESC);
@@ -295,40 +295,38 @@ CREATE INDEX idx_import_jobs_status          ON import_jobs(account_id, status);
 
 
 -- =============================================================================
--- PASS B — ENABLE RLS AND CREATE ALL POLICIES
+-- PASS B â€” ENABLE RLS AND CREATE ALL POLICIES
 -- All 9 tables now exist. Safe to reference any table in any policy.
 --
 -- IMPORTANT: All system_admin checks use the is_system_admin() SECURITY
 -- DEFINER helper below. Direct subqueries into `profiles` from within
--- `profiles` policies cause 42P17 infinite recursion — PostgREST returns
+-- `profiles` policies cause 42P17 infinite recursion â€” PostgREST returns
 -- HTTP 500 on every anon request. The helper bypasses RLS on profiles.
 -- =============================================================================
 
 
 -- -----------------------------------------------------------------------------
--- B-0: RLS helper functions (SECURITY DEFINER — bypass RLS on profiles)
+-- B-0: RLS helper functions (SECURITY DEFINER â€” bypass RLS on profiles)
 -- Must be created before any policy references them.
 -- -----------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION public.is_system_admin()
+CREATE OR REPLACE FUNCTION is_system_admin()
 RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE
-SET search_path = public
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.profiles
+    SELECT 1 FROM profiles
     WHERE id = auth.uid()
     AND role = 'system_admin'
   )
 $$;
 
 -- Used by own_profile_update to prevent role self-escalation without recursion
-CREATE OR REPLACE FUNCTION public.get_my_role()
+CREATE OR REPLACE FUNCTION get_my_role()
 RETURNS text
 LANGUAGE sql SECURITY DEFINER STABLE
-SET search_path = public
 AS $$
-  SELECT role FROM public.profiles WHERE id = auth.uid()
+  SELECT role FROM profiles WHERE id = auth.uid()
 $$;
 
 
@@ -486,7 +484,7 @@ CREATE POLICY "user_account_activity_select"
     )
   );
 
--- No INSERT policy for regular users — activity_log is written only by
+-- No INSERT policy for regular users â€” activity_log is written only by
 -- server-side API routes using the user's session or the service role.
 
 
@@ -608,7 +606,7 @@ CREATE POLICY "user_account_import_jobs_all"
 
 
 -- =============================================================================
--- PASS C — SEED INITIAL DATA + ENABLE REALTIME
+-- PASS C â€” SEED INITIAL DATA + ENABLE REALTIME
 -- =============================================================================
 
 
