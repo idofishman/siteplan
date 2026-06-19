@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccountStore } from '@/stores/accountStore'
 import { AccountSwitcher } from '@/components/account/AccountSwitcher'
+import { PresenceBar } from '@/components/presence/PresenceBar'
 import { signOut } from '@/app/login/actions'
 import type { Profile } from '@/types'
 
@@ -73,6 +74,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      <PresenceBar />
       <main className="flex-1">{children}</main>
     </div>
   )
