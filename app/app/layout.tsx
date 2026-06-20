@@ -100,7 +100,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="bg-slate-800 text-white px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-slate-200">מנהל מבנה האתר</span>
-          <span className="text-xs text-slate-500 font-mono">v{pkg.version}</span>
+          <span
+            className="text-xs text-slate-500 font-mono"
+            title={process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'local'}
+          >
+            v{pkg.version}{process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ? `·${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` : '·dev'}
+          </span>
           <span className="text-slate-600">|</span>
           <AccountSwitcher />
           <LastEdited accountId={activeAccount.id} />

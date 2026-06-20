@@ -22,6 +22,7 @@ export async function GET(request: Request) {
     .select('*')
     .eq('account_id', accountId)
     .order('sort_order')
+    .limit(50000)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data ?? [])
