@@ -11,14 +11,20 @@ import type { PageNode as PageNodeType } from '@/types'
 
 interface Props {
   accountId: string
+  visibleIds?: Set<string> | null
+  searchQuery?: string
 }
 
-function DroppableLevel({ nodes, droppableId, depth, gscClicks }: {
+function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, searchQuery }: {
   nodes: PageNodeType[]
   droppableId: string
   depth: number
   gscClicks: Record<string, number>
+  visibleIds?: Set<string> | null
+  searchQuery?: string
 }) {
+  const filteredNodes = visibleIds ? nodes.filter(n => visibleIds.has(n.id)) : nodes
+
   return (
     <Droppable droppableId={droppableId}>
       {(provided, snapshot) => (
@@ -27,7 +33,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks }: {
           {...provided.droppableProps}
           className={snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg' : ''}
         >
-          {nodes.map((node, index) => (
+          {filteredNodes.map((node, index) => (
             <Draggable key={node.id} draggableId={node.id} index={index}>
               {(dragProvided) => (
                 <div
@@ -35,7 +41,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks }: {
                   {...dragProvided.draggableProps}
                   {...dragProvided.dragHandleProps}
                 >
-                  <PageNode node={node} depth={depth} gscClicks={gscClicks} />
+                  <PageNode node={node} depth={depth} gscClicks={gscClicks} visibleIds={visibleIds} searchQuery={searchQuery} />
                 </div>
               )}
             </Draggable>
@@ -47,13 +53,14 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks }: {
   )
 }
 
-export function PageTree({ accountId }: Props) {
-  const { tree, gscClicks, loadPages } = useTreeStore()
+export function PageTree({ accountId, visibleIds, searchQuery }: Props) {
+  const { tree, gscClicks, loadPages, loadGsc } = useTreeStore()
   const { initExpanded } = useUiStore()
 
   useEffect(() => {
     initExpanded()
     loadPages(accountId)
+    loadGsc(accountId)
   }, [accountId])
 
   if (tree.length === 0) {
@@ -65,9 +72,20 @@ export function PageTree({ accountId }: Props) {
     )
   }
 
+  if (visibleIds !== null && visibleIds !== undefined && visibleIds.size === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
+        <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <p className="text-sm">לא נמצאו עמודים תואמים</p>
+      </div>
+    )
+  }
+
   return (
     <DragDropProvider>
-      <DroppableLevel nodes={tree} droppableId="root" depth={0} gscClicks={gscClicks} />
+      <DroppableLevel nodes={tree} droppableId="root" depth={0} gscClicks={gscClicks} visibleIds={visibleIds} searchQuery={searchQuery} />
     </DragDropProvider>
   )
 }

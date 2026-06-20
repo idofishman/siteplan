@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import type { Account } from '@/types'
 
 interface UserRow {
@@ -24,6 +24,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [editUser, setEditUser] = useState<UserRow | null>(null)
 
   async function load() {
     const [usersRes, accsRes] = await Promise.all([
@@ -129,6 +130,18 @@ export default function AdminUsersPage() {
         />
       )}
 
+      {editUser && (
+        <EditUserModal
+          user={editUser}
+          accounts={accounts}
+          onClose={() => setEditUser(null)}
+          onSaved={updated => {
+            setUsers(prev => prev.map(u => u.id === updated.id ? updated : u))
+            setEditUser(null)
+          }}
+        />
+      )}
+
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -143,9 +156,8 @@ export default function AdminUsersPage() {
           </thead>
           <tbody>
             {users.map(u => (
-              <>
+              <React.Fragment key={u.id}>
                 <tr
-                  key={u.id}
                   className={`border-b border-slate-100 hover:bg-slate-50 ${u.is_banned ? 'opacity-60' : ''}`}
                 >
                   <td className="px-4 py-3">
@@ -192,11 +204,10 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 text-end">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => handleResetPassword(u.id, u.email)}
-                        className="text-xs text-slate-500 hover:text-slate-700"
-                        title="שלח לינק איפוס סיסמה"
+                        onClick={() => setEditUser(u)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                       >
-                        איפוס סיסמה
+                        עריכה
                       </button>
                       <button
                         onClick={() => handleDelete(u.id, u.display_name)}
@@ -219,7 +230,7 @@ export default function AdminUsersPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -322,6 +333,225 @@ function AccountAssignment({
         >
           {saving ? 'שומר...' : 'שמור שיוכים'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+function EditUserModal({
+  user,
+  accounts,
+  onClose,
+  onSaved,
+}: {
+  user: UserRow
+  accounts: Account[]
+  onClose: () => void
+  onSaved: (updated: UserRow) => void
+}) {
+  const [displayName, setDisplayName] = useState(user.display_name)
+  const [role, setRole] = useState(user.role)
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set(user.account_ids))
+  const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [togglingStatus, setTogglingStatus] = useState(false)
+  const [localBanned, setLocalBanned] = useState(user.is_banned)
+  const [error, setError] = useState<string | null>(null)
+  const [resetMsg, setResetMsg] = useState<string | null>(null)
+
+  function toggleAccount(id: string) {
+    setSelectedAccounts(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    const account_ids = [...selectedAccounts]
+
+    const [profileRes, accountRes] = await Promise.all([
+      fetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: displayName, role }),
+      }),
+      fetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_ids }),
+      }),
+    ])
+
+    if (!profileRes.ok || !accountRes.ok) {
+      setError('שגיאה בשמירה')
+      setSaving(false)
+      return
+    }
+
+    onSaved({ ...user, display_name: displayName, role, account_ids, is_banned: localBanned })
+  }
+
+  async function handleToggleStatus() {
+    setTogglingStatus(true)
+    const res = await fetch(`/api/admin/users/${user.id}?action=toggle-status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    if (res.ok) {
+      const { is_banned } = await res.json()
+      setLocalBanned(is_banned)
+    }
+    setTogglingStatus(false)
+  }
+
+  async function handleResetPassword() {
+    setResetting(true)
+    setResetMsg(null)
+    const res = await fetch(`/api/admin/users/${user.id}?action=reset-password`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    if (res.ok) {
+      const { link } = await res.json()
+      if (link) {
+        await navigator.clipboard.writeText(link)
+        setResetMsg('לינק איפוס הועתק ללוח')
+      } else {
+        setResetMsg('לא ניתן לייצר לינק איפוס')
+      }
+    } else {
+      setResetMsg('שגיאה בייצור לינק')
+    }
+    setResetting(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+          <h2 className="text-lg font-bold text-slate-800">עריכת משתמש</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 flex flex-col gap-5">
+          {/* Email (read-only) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-500">אימייל</label>
+            <p className="text-sm text-slate-700 font-mono bg-slate-50 px-3 py-2 rounded-lg" dir="ltr">
+              {user.email ?? '—'}
+            </p>
+          </div>
+
+          {/* Display name */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-500">שם תצוגה</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+
+          {/* Role */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-500">תפקיד</label>
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              className="text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              {ROLES.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-500">סטטוס</p>
+              <p className="text-sm text-slate-700 mt-0.5">{localBanned ? 'חסום' : 'פעיל'}</p>
+            </div>
+            <button
+              onClick={handleToggleStatus}
+              disabled={togglingStatus}
+              className={`text-sm px-4 py-1.5 rounded-lg font-medium transition-colors ${
+                localBanned
+                  ? 'bg-green-100 hover:bg-green-200 text-green-700'
+                  : 'bg-red-100 hover:bg-red-200 text-red-700'
+              }`}
+            >
+              {togglingStatus ? '...' : localBanned ? 'בטל חסימה' : 'חסום משתמש'}
+            </button>
+          </div>
+
+          {/* Reset password */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-500">סיסמה</p>
+              {resetMsg && <p className="text-xs text-green-600 mt-0.5">{resetMsg}</p>}
+            </div>
+            <button
+              onClick={handleResetPassword}
+              disabled={resetting}
+              className="text-sm px-4 py-1.5 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            >
+              {resetting ? 'מייצר...' : 'שלח לינק איפוס סיסמה'}
+            </button>
+          </div>
+
+          {/* Account assignment */}
+          {accounts.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-slate-500">גישה לחשבונות</label>
+              <div className="flex flex-wrap gap-3 bg-slate-50 rounded-lg p-3">
+                {accounts.map(acc => (
+                  <label key={acc.id} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedAccounts.has(acc.id)}
+                      onChange={() => toggleAccount(acc.id)}
+                      className="accent-blue-600"
+                    />
+                    {acc.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-6 py-4 border-t border-slate-200 shrink-0">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+          >
+            {saving ? 'שומר...' : 'שמור שינויים'}
+          </button>
+          <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">
+            ביטול
+          </button>
+        </div>
       </div>
     </div>
   )

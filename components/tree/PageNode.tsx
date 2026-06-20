@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { ColorSwatch } from '@/components/ui/ColorSwatch'
@@ -10,6 +11,21 @@ interface Props {
   node: PageNodeType
   depth: number
   gscClicks: Record<string, number>
+  visibleIds?: Set<string> | null
+  searchQuery?: string
+}
+
+function highlight(text: string, query: string): React.ReactNode {
+  if (!query) return text
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return text
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 text-yellow-900 rounded-sm px-0.5 not-italic">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  )
 }
 
 function GscIndicator({ clicks }: { clicks: number }) {
@@ -33,9 +49,11 @@ function GscIndicator({ clicks }: { clicks: number }) {
   )
 }
 
-export function PageNode({ node, depth, gscClicks }: Props) {
+export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Props) {
   const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
-  const isExpanded = expandedNodeIds.has(node.id)
+  // When searching, force-expand nodes that have visible descendants
+  const isSearching = visibleIds !== null && visibleIds !== undefined
+  const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
   const hasChildren = node.children.length > 0
   const clicks = node.url_normalized ? (gscClicks[node.url_normalized] ?? 0) : 0
@@ -94,13 +112,13 @@ export function PageNode({ node, depth, gscClicks }: Props) {
 
         {/* Name */}
         <span className="flex-1 text-sm text-slate-800 truncate min-w-0">
-          {node.name}
+          {searchQuery ? highlight(node.name, searchQuery) : node.name}
         </span>
 
         {/* URL */}
         {node.url && (
           <span className="text-xs text-slate-400 truncate max-w-[180px] hidden sm:block" dir="ltr">
-            {node.url}
+            {searchQuery ? highlight(node.url, searchQuery) : node.url}
           </span>
         )}
 
@@ -130,9 +148,11 @@ export function PageNode({ node, depth, gscClicks }: Props) {
       {/* Children */}
       {isExpanded && node.children.length > 0 && (
         <div>
-          {node.children.map(child => (
-            <PageNode key={child.id} node={child} depth={depth + 1} gscClicks={gscClicks} />
-          ))}
+          {node.children
+            .filter(child => !visibleIds || visibleIds.has(child.id))
+            .map(child => (
+              <PageNode key={child.id} node={child} depth={depth + 1} gscClicks={gscClicks} visibleIds={visibleIds} searchQuery={searchQuery} />
+            ))}
         </div>
       )}
     </div>
