@@ -25,18 +25,13 @@ export function DragDropProvider({ children }: Props) {
     const node = findNode(tree, draggableId)
     if (!node) return
 
-    // Same parent, just reordering — silent save (no confirm)
-    if (source.droppableId === destination.droppableId) {
-      useTreeStore.getState().movePage(draggableId, newParentId, newSortOrder)
-      return
-    }
-
-    // Different parent — show confirm modal
+    // Always confirm before saving position change
     openModal('movePage', {
       pageId: draggableId,
       pageName: node.name,
       newParentId,
       newSortOrder,
+      isSameParent: source.droppableId === destination.droppableId,
     })
   }
 

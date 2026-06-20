@@ -15,6 +15,15 @@ interface Props {
   searchQuery?: string
 }
 
+function getUrlPath(url: string): string {
+  try {
+    const u = new URL(url.startsWith('http') ? url : `https://x${url.startsWith('/') ? '' : '/'}${url}`)
+    return u.pathname + (u.search || '')
+  } catch {
+    return url
+  }
+}
+
 function highlight(text: string, query: string): React.ReactNode {
   if (!query) return text
   const idx = text.toLowerCase().indexOf(query.toLowerCase())
@@ -115,10 +124,14 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Pr
           {searchQuery ? highlight(node.name, searchQuery) : node.name}
         </span>
 
-        {/* URL */}
+        {/* URL — show path only, full URL in tooltip */}
         {node.url && (
-          <span className="text-xs text-slate-400 truncate max-w-[180px] hidden sm:block" dir="ltr">
-            {searchQuery ? highlight(node.url, searchQuery) : node.url}
+          <span
+            className="text-xs text-slate-400 truncate max-w-[260px] hidden sm:block"
+            dir="ltr"
+            title={node.url}
+          >
+            {searchQuery ? highlight(getUrlPath(node.url), searchQuery) : getUrlPath(node.url)}
           </span>
         )}
 

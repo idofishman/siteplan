@@ -16,6 +16,7 @@ export function MoveConfirmModal() {
     pageName: string
     newParentId: string | null
     newSortOrder: number
+    isSameParent?: boolean
   } | null
 
   if (!open || !payload) return null
@@ -37,9 +38,14 @@ export function MoveConfirmModal() {
         className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-slate-800">העברת עמוד</h2>
+        <h2 className="text-lg font-bold text-slate-800">
+          {payload.isSameParent ? 'שינוי סדר' : 'העברת עמוד'}
+        </h2>
         <p className="text-sm text-slate-600">
-          להעביר את <strong>{payload.pageName}</strong> אל <strong>{parentLabel}</strong>?
+          {payload.isSameParent
+            ? <>לשנות את מיקומו של <strong>{payload.pageName}</strong> בתפריט?</>
+            : <>להעביר את <strong>{payload.pageName}</strong> אל <strong>{parentLabel}</strong>?</>
+          }
         </p>
 
         <div className="flex gap-2">
@@ -48,7 +54,7 @@ export function MoveConfirmModal() {
             disabled={moving}
             className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
-            {moving ? 'מעביר...' : 'העבר'}
+            {moving ? 'שומר...' : payload.isSameParent ? 'שמור סדר' : 'העבר'}
           </button>
           <button onClick={closeModal} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">
             ביטול

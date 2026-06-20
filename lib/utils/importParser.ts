@@ -1,4 +1,4 @@
-import { normalizeUrl } from './url'
+import { normalizeUrl, cleanTrackingParams } from './url'
 import { TEMPLATES } from '@/lib/constants'
 
 const VALID_STATUSES = new Set([
@@ -23,6 +23,7 @@ export interface ParseResult {
   type: 'xlsx' | 'csv' | 'json' | 'xml_sitemap' | 'txt_urls'
   urls: ParsedUrl[]
   error?: string
+  cleanedCount: number
 }
 
 // Entry point for text-based formats (CSV, JSON, XML, TXT)
@@ -53,7 +54,7 @@ export function parseXlsxRows(
   rows: string[][],
   domain?: string
 ): ParseResult {
-  if (rows.length === 0) return { type: 'xlsx', urls: [] }
+  if (rows.length === 0) return { type: 'xlsx', urls: [], cleanedCount: 0 }
 
   const header = rows[0].map(c => (c ?? '').toString().toLowerCase().trim())
   const urlColIndex = header.findIndex(h =>
@@ -64,18 +65,22 @@ export function parseXlsxRows(
   const colIndex = urlColIndex >= 0 ? urlColIndex : 0
 
   const urls: ParsedUrl[] = []
+  let cleanedCount = 0
   for (let i = startRow; i < rows.length; i++) {
     const raw = (rows[i][colIndex] ?? '').toString().trim()
     if (!raw) continue
-    const norm = normalizeUrl(raw, domain)
-    if (norm) urls.push({ url: raw, url_normalized: norm })
+    const { url: cleaned, wasCleaned } = cleanTrackingParams(raw)
+    if (wasCleaned) cleanedCount++
+    const norm = normalizeUrl(cleaned, domain)
+    if (norm) urls.push({ url: cleaned, url_normalized: norm })
   }
 
-  return { type: 'xlsx', urls }
+  return { type: 'xlsx', urls, cleanedCount }
 }
 
 function parseJsonUrls(content: string, domain?: string): ParseResult {
   const urls: ParsedUrl[] = []
+  let cleanedCount = 0
   try {
     const parsed = JSON.parse(content)
 
@@ -89,15 +94,15 @@ function parseJsonUrls(content: string, domain?: string): ParseResult {
 
     if (isTree(parsed)) {
       for (const node of (parsed as Record<string, unknown>[])) {
-        flattenJsonTree(node, null, urls, domain)
+        cleanedCount += flattenJsonTree(node, null, urls, domain)
       }
-      return { type: 'json', urls }
+      return { type: 'json', urls, cleanedCount }
     }
 
     // Also handle single-root object with children
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'children' in parsed) {
-      flattenJsonTree(parsed as Record<string, unknown>, null, urls, domain)
-      return { type: 'json', urls }
+      cleanedCount += flattenJsonTree(parsed as Record<string, unknown>, null, urls, domain)
+      return { type: 'json', urls, cleanedCount }
     }
 
     // Flat format — array of strings or {url} objects
@@ -133,26 +138,34 @@ function parseJsonUrls(content: string, domain?: string): ParseResult {
     }
 
     for (const raw of candidates) {
-      const norm = normalizeUrl(raw, domain)
-      if (norm) urls.push({ url: raw, url_normalized: norm })
+      const { url: cleaned, wasCleaned } = cleanTrackingParams(raw)
+      if (wasCleaned) cleanedCount++
+      const norm = normalizeUrl(cleaned, domain)
+      if (norm) urls.push({ url: cleaned, url_normalized: norm })
     }
   } catch {
-    return { type: 'json', urls: [], error: 'קובץ JSON לא תקין' }
+    return { type: 'json', urls: [], error: 'קובץ JSON לא תקין', cleanedCount: 0 }
   }
 
-  return { type: 'json', urls }
+  return { type: 'json', urls, cleanedCount }
 }
 
-// Recursively walks a tree node, pushing a flat record for every node
+// Recursively walks a tree node; returns count of cleaned tracking-param URLs
 function flattenJsonTree(
   node: Record<string, unknown>,
   parentTempId: string | null,
   result: ParsedUrl[],
   domain?: string
-): void {
+): number {
+  let cleanedCount = 0
   const tempId = (node.id as string) || `tmp-${result.length}`
   const rawUrl = (node.url as string | undefined) ?? ''
-  const norm = rawUrl ? (normalizeUrl(rawUrl, domain) ?? '') : ''
+  let urlToStore = rawUrl
+  if (rawUrl) {
+    const { url: cleaned, wasCleaned } = cleanTrackingParams(rawUrl)
+    if (wasCleaned) { cleanedCount++; urlToStore = cleaned }
+  }
+  const norm = urlToStore ? (normalizeUrl(urlToStore, domain) ?? '') : ''
 
   const name = ((node.name as string) ?? '').trim()
 
@@ -169,7 +182,7 @@ function flattenJsonTree(
   // Always include the node (even if no URL) as long as it has a name
   if (name) {
     result.push({
-      url: rawUrl,
+      url: urlToStore,
       url_normalized: norm,
       name,
       temp_id: tempId,
@@ -184,36 +197,43 @@ function flattenJsonTree(
   if (Array.isArray(children)) {
     for (const child of children) {
       if (child && typeof child === 'object') {
-        flattenJsonTree(child as Record<string, unknown>, tempId, result, domain)
+        cleanedCount += flattenJsonTree(child as Record<string, unknown>, tempId, result, domain)
       }
     }
   }
+  return cleanedCount
 }
 
 function parseXmlSitemap(content: string, domain?: string): ParseResult {
   const urlMatches = content.match(/<loc[^>]*>([^<]+)<\/loc>/g) ?? []
   const urls: ParsedUrl[] = []
+  let cleanedCount = 0
 
   for (const match of urlMatches) {
     const raw = match.replace(/<loc[^>]*>/, '').replace(/<\/loc>/, '').trim()
     if (!raw) continue
-    const norm = normalizeUrl(raw, domain)
-    if (norm) urls.push({ url: raw, url_normalized: norm })
+    const { url: cleaned, wasCleaned } = cleanTrackingParams(raw)
+    if (wasCleaned) cleanedCount++
+    const norm = normalizeUrl(cleaned, domain)
+    if (norm) urls.push({ url: cleaned, url_normalized: norm })
   }
 
-  return { type: 'xml_sitemap', urls }
+  return { type: 'xml_sitemap', urls, cleanedCount }
 }
 
 function parseTxtUrls(content: string, domain?: string): ParseResult {
   const lines = content.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'))
   const urls: ParsedUrl[] = []
+  let cleanedCount = 0
 
   for (const line of lines) {
-    const norm = normalizeUrl(line, domain)
-    if (norm) urls.push({ url: line, url_normalized: norm })
+    const { url: cleaned, wasCleaned } = cleanTrackingParams(line)
+    if (wasCleaned) cleanedCount++
+    const norm = normalizeUrl(cleaned, domain)
+    if (norm) urls.push({ url: cleaned, url_normalized: norm })
   }
 
-  return { type: 'txt_urls', urls }
+  return { type: 'txt_urls', urls, cleanedCount }
 }
 
 function parseCsvUrls(content: string, domain?: string): ParseResult {
@@ -222,6 +242,7 @@ function parseCsvUrls(content: string, domain?: string): ParseResult {
   const urlColIndex = headers.findIndex(h => h === 'url' || h === 'address' || h === 'loc' || h === 'page')
 
   const urls: ParsedUrl[] = []
+  let cleanedCount = 0
   const startIndex = urlColIndex >= 0 ? 1 : 0
   const colIndex = urlColIndex >= 0 ? urlColIndex : 0
 
@@ -229,9 +250,11 @@ function parseCsvUrls(content: string, domain?: string): ParseResult {
     const parts = lines[i].split(',')
     const raw = (parts[colIndex] ?? '').trim().replace(/"/g, '')
     if (!raw) continue
-    const norm = normalizeUrl(raw, domain)
-    if (norm) urls.push({ url: raw, url_normalized: norm })
+    const { url: cleaned, wasCleaned } = cleanTrackingParams(raw)
+    if (wasCleaned) cleanedCount++
+    const norm = normalizeUrl(cleaned, domain)
+    if (norm) urls.push({ url: cleaned, url_normalized: norm })
   }
 
-  return { type: 'csv', urls }
+  return { type: 'csv', urls, cleanedCount }
 }

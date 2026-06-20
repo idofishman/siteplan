@@ -105,7 +105,10 @@ export async function POST(request: Request) {
     }))
   }
 
-  const { error } = await supabase.from('pages').insert(newPages)
+  const { error } = await supabase.from('pages').upsert(newPages, {
+    onConflict: 'account_id,url_normalized',
+    ignoreDuplicates: true,
+  })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await logActivity(supabase, {

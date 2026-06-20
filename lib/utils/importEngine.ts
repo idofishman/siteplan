@@ -25,11 +25,13 @@ export interface ImportPlan {
   newCount: number
   existingCount: number
   duplicateCount: number
+  cleanedCount: number
 }
 
 export function buildImportPlan(
   parsed: ParsedUrl[],
-  existingPages: Pick<Page, 'id' | 'name' | 'url_normalized'>[]
+  existingPages: Pick<Page, 'id' | 'name' | 'url_normalized'>[],
+  cleanedCount = 0
 ): ImportPlan {
   const existingMap = new Map(
     existingPages
@@ -128,5 +130,6 @@ export function buildImportPlan(
     newCount: toAdd.length,
     existingCount: toSkip.length,
     duplicateCount: duplicates.length,
+    cleanedCount,
   }
 }

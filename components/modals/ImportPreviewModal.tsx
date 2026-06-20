@@ -58,6 +58,9 @@ export function ImportPreviewModal() {
               {plan.newCount} יתווספו
               {plan.existingCount > 0 && ` · ${plan.existingCount} קיימים (יושמטו)`}
               {duplicates.length > 0 && ` · ${duplicates.length} כפולים (יושמטו)`}
+              {plan.cleanedCount > 0 && (
+                <span className="text-amber-600"> · {plan.cleanedCount} כתובות נוקו מפרמטרי מעקב</span>
+              )}
             </p>
           </div>
           <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">✕</button>

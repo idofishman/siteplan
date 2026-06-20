@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     .select('id, name, url_normalized')
     .eq('account_id', accountId)
 
-  const plan = buildImportPlan(parsed.urls, existingPages ?? [])
+  const plan = buildImportPlan(parsed.urls, existingPages ?? [], parsed.cleanedCount ?? 0)
 
   return NextResponse.json({ fileType: parsed.type, plan })
 }

@@ -28,11 +28,18 @@ export function ContextMenu() {
   const page = pages.find(p => p.id === contextMenu.pageId)
   if (!page) return null
 
-  // Clamp position so menu doesn't overflow viewport
+  // Position menu so it always stays inside the viewport
   const MENU_W = 192
-  const MENU_H = 160
-  const x = Math.min(contextMenu.x, window.innerWidth - MENU_W - 8)
-  const y = Math.min(contextMenu.y, window.innerHeight - MENU_H - 8)
+  const MENU_H = 164
+  const PAD = 8
+  // Flip horizontal: open to the left if would overflow right
+  const x = contextMenu.x + MENU_W + PAD > window.innerWidth
+    ? Math.max(PAD, contextMenu.x - MENU_W)
+    : Math.max(PAD, contextMenu.x)
+  // Flip vertical: open above if would overflow bottom
+  const y = contextMenu.y + MENU_H + PAD > window.innerHeight
+    ? Math.max(PAD, contextMenu.y - MENU_H)
+    : Math.max(PAD, contextMenu.y)
 
   function action(fn: () => void) {
     closeContextMenu()
