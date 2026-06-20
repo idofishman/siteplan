@@ -18,11 +18,9 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).single()
   const displayName = profile?.display_name ?? user.id
 
-  // Only insert the "add" ones
   const toAdd = urls.filter(u => u.action === 'add')
   if (toAdd.length === 0) return NextResponse.json({ inserted: 0 })
 
-  // Get max sort_order
   const { data: existing } = await supabase
     .from('pages')
     .select('sort_order')
@@ -30,18 +28,44 @@ export async function POST(request: Request) {
     .order('sort_order', { ascending: false })
     .limit(1)
 
-  let sortOrder = (existing?.[0]?.sort_order ?? 0) + 1
+  const baseSortOrder = (existing?.[0]?.sort_order ?? 0) + 1
+  const isTree = toAdd.some(u => u.temp_id !== undefined)
 
-  const newPages = toAdd.map(u => ({
-    account_id,
-    name: deriveNameFromUrl(u.url),
-    url: u.url,
-    url_normalized: u.url_normalized,
-    status: 'draft' as const,
-    sort_order: sortOrder++,
-    created_by: user.id,
-    updated_by: user.id,
-  }))
+  let newPages: Record<string, unknown>[]
+
+  if (isTree) {
+    // Pre-generate all UUIDs keyed by temp_id so parent_id can be resolved
+    const idMap = new Map<string, string>()
+    for (const u of toAdd) {
+      if (u.temp_id) idMap.set(u.temp_id, crypto.randomUUID())
+    }
+
+    newPages = toAdd.map((u, i) => ({
+      id: u.temp_id ? idMap.get(u.temp_id) : undefined,
+      account_id,
+      parent_id: u.parent_temp_id ? (idMap.get(u.parent_temp_id) ?? null) : null,
+      name: u.name?.trim() || deriveNameFromUrl(u.url),
+      url: u.url || null,
+      url_normalized: u.url_normalized || null,
+      color: u.color ?? null,
+      template: u.template ?? null,
+      status: u.status ?? 'existing',
+      sort_order: baseSortOrder + i,
+      created_by: user.id,
+      updated_by: user.id,
+    }))
+  } else {
+    newPages = toAdd.map((u, i) => ({
+      account_id,
+      name: u.name?.trim() || deriveNameFromUrl(u.url),
+      url: u.url || null,
+      url_normalized: u.url_normalized || null,
+      status: 'existing',
+      sort_order: baseSortOrder + i,
+      created_by: user.id,
+      updated_by: user.id,
+    }))
+  }
 
   const { error } = await supabase.from('pages').insert(newPages)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

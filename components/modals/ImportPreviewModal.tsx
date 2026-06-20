@@ -75,7 +75,12 @@ export function ImportPreviewModal() {
                   {plan.toAdd.map((u, i) => (
                     <div key={i} className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 bg-white hover:bg-green-50">
                       <span className="text-green-500 text-sm">+</span>
-                      <span className="text-xs text-slate-600 font-mono" dir="ltr">{u.url}</span>
+                      {u.name
+                        ? <span className="text-sm text-slate-700 flex-1 truncate">{u.name}</span>
+                        : null}
+                      {u.url
+                        ? <span className="text-xs text-slate-400 font-mono truncate max-w-[260px]" dir="ltr">{u.url}</span>
+                        : null}
                     </div>
                   ))}
                 </div>
@@ -88,7 +93,12 @@ export function ImportPreviewModal() {
                   {plan.toSkip.map((u, i) => (
                     <div key={i} className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 opacity-50">
                       <span className="text-slate-400 text-sm">–</span>
-                      <span className="text-xs text-slate-500 font-mono" dir="ltr">{u.url}</span>
+                      {u.name
+                        ? <span className="text-sm text-slate-500 flex-1 truncate">{u.name}</span>
+                        : null}
+                      {u.url
+                        ? <span className="text-xs text-slate-400 font-mono truncate max-w-[260px]" dir="ltr">{u.url}</span>
+                        : null}
                       {u.existingPage && <span className="text-xs text-slate-400 mr-auto">{u.existingPage.name}</span>}
                     </div>
                   ))}
