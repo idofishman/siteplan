@@ -10,15 +10,15 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal'
 import { MoveConfirmModal } from '@/components/modals/MoveConfirmModal'
 import { BulkToolbar } from '@/components/tree/BulkToolbar'
 import { BulkActionModal } from '@/components/modals/BulkActionModal'
-import { ImportModal } from '@/components/modals/ImportModal'
-import { ImportPreviewModal } from '@/components/modals/ImportPreviewModal'
 
 export default function AppPage() {
   const { activeAccount } = useAccountStore()
-  const { saveStatus } = useTreeStore()
-  const { openModal } = useUiStore()
+  const { saveStatus, pages } = useTreeStore()
+  const { openModal, expandAll, collapseAll } = useUiStore()
 
   if (!activeAccount) return null
+
+  const homepageId = pages.find(p => p.template === 'homepage' && !p.parent_id)?.id
 
   return (
     <div className="flex flex-col h-full">
@@ -27,14 +27,24 @@ export default function AppPage() {
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-slate-700">מבנה האתר</span>
           <SaveIndicator status={saveStatus} />
+          <div className="flex items-center gap-1 border-r border-slate-200 pr-3 mr-1">
+            <button
+              onClick={() => expandAll(pages.map(p => p.id))}
+              className="text-xs px-2 py-1 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="הרחב הכל"
+            >
+              הרחב הכל
+            </button>
+            <button
+              onClick={() => collapseAll(homepageId)}
+              className="text-xs px-2 py-1 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="כווץ הכל"
+            >
+              כווץ הכל
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => openModal('import', {})}
-            className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition-colors"
-          >
-            ייבא נתונים
-          </button>
           <button
             onClick={() => openModal('addPage', {})}
             className="text-sm px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white transition-colors"
@@ -57,8 +67,6 @@ export default function AppPage() {
       <DeleteConfirmModal />
       <MoveConfirmModal />
       <BulkActionModal />
-      <ImportModal onPlanReady={() => {}} />
-      <ImportPreviewModal />
     </div>
   )
 }

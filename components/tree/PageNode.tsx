@@ -114,8 +114,8 @@ export function PageNode({ node, depth, gscClicks }: Props) {
           </span>
         )}
 
-        {/* Status badge */}
-        <StatusBadge status={node.status} size="xs" />
+        {/* Status badge — hide "existing" since it's the default/obvious state */}
+        {node.status !== 'existing' && <StatusBadge status={node.status} size="xs" />}
 
         {/* Context menu */}
         <PageNodeMenu node={node} />

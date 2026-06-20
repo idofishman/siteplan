@@ -13,6 +13,8 @@ interface UiStore {
   clearSelection: () => void
 
   toggleExpand: (id: string) => void
+  expandAll: (ids: string[]) => void
+  collapseAll: (keepId?: string) => void
   initExpanded: () => void
 
   openModal: (name: string, payload?: unknown) => void
@@ -53,6 +55,20 @@ export const useUiStore = create<UiStore>((set, get) => ({
       } catch {}
       return { expandedNodeIds: next }
     })
+  },
+
+  expandAll(ids: string[]) {
+    set(state => {
+      const next = new Set([...state.expandedNodeIds, ...ids])
+      try { localStorage.setItem(EXPANDED_KEY, JSON.stringify([...next])) } catch {}
+      return { expandedNodeIds: next }
+    })
+  },
+
+  collapseAll(keepId?: string) {
+    const next = keepId ? new Set([keepId]) : new Set<string>()
+    try { localStorage.setItem(EXPANDED_KEY, JSON.stringify([...next])) } catch {}
+    set({ expandedNodeIds: next })
   },
 
   initExpanded() {

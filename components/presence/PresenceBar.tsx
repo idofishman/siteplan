@@ -76,7 +76,9 @@ export function PresenceBar() {
       <span className="shrink-0">מחובר:</span>
       <div className="flex items-center gap-1">
         {shown.map(u => (
-          <Avatar key={u.user_id} name={u.display_name} size="sm" isActive={u.status === 'active'} />
+          <div key={u.user_id} title={u.display_name || 'משתמש'}>
+            <Avatar name={u.display_name} size="sm" isActive={u.status === 'active'} />
+          </div>
         ))}
       </div>
       {overflow > 0 && (

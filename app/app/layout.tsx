@@ -4,8 +4,12 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAccountStore } from '@/stores/accountStore'
+import { useUiStore } from '@/stores/uiStore'
 import { AccountSwitcher } from '@/components/account/AccountSwitcher'
 import { PresenceBar } from '@/components/presence/PresenceBar'
+import { LastEdited } from '@/components/ui/LastEdited'
+import { ImportModal } from '@/components/modals/ImportModal'
+import { ImportPreviewModal } from '@/components/modals/ImportPreviewModal'
 import { signOut } from '@/app/login/actions'
 import type { Profile } from '@/types'
 
@@ -20,6 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { activeAccount, loadAccounts, setActiveAccount } = useAccountStore()
+  const { openModal } = useUiStore()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [ready, setReady] = useState(false)
 
@@ -65,6 +70,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-semibold text-slate-200">מנהל מבנה האתר</span>
           <span className="text-slate-600">|</span>
           <AccountSwitcher />
+          <LastEdited accountId={activeAccount.id} />
         </div>
         <div className="flex items-center gap-4">
           {profile && (
@@ -85,27 +91,39 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <PresenceBar />
 
-      {/* Navigation tabs */}
-      <nav className="bg-white border-b border-slate-200 px-4 flex gap-1 shrink-0">
-        {NAV_TABS.map(tab => {
-          const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`text-sm px-3 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
-                active
-                  ? 'border-blue-500 text-blue-600 font-medium'
-                  : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
-              }`}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
+      {/* Navigation tabs + import button */}
+      <nav className="bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
+        <div className="flex gap-1">
+          {NAV_TABS.map(tab => {
+            const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`text-sm px-3 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
+                  active
+                    ? 'border-blue-500 text-blue-600 font-medium'
+                    : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+                }`}
+              >
+                {tab.label}
+              </Link>
+            )
+          })}
+        </div>
+        <button
+          onClick={() => openModal('import', {})}
+          className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition-colors my-1"
+        >
+          ייבא נתונים
+        </button>
       </nav>
 
       <main className="flex-1 overflow-auto">{children}</main>
+
+      {/* Import modals — rendered at layout level so import is accessible from any page */}
+      <ImportModal onPlanReady={() => {}} />
+      <ImportPreviewModal />
     </div>
   )
 }
