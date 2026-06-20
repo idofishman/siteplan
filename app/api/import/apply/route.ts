@@ -18,7 +18,15 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).single()
   const displayName = profile?.display_name ?? user.id
 
-  const toAdd = urls.filter(u => u.action === 'add')
+  // Defensive dedup: even if the client sends duplicates, skip them here
+  const seenNorm = new Set<string>()
+  const toAdd = urls.filter(u => {
+    if (u.action !== 'add') return false
+    if (!u.url_normalized) return true // no-URL pages (name-only) are always allowed
+    if (seenNorm.has(u.url_normalized)) return false
+    seenNorm.add(u.url_normalized)
+    return true
+  })
   if (toAdd.length === 0) return NextResponse.json({ inserted: 0 })
 
   const { data: existing } = await supabase
