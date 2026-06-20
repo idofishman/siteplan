@@ -16,16 +16,29 @@ export function DragDropProvider({ children }: Props) {
   function onDragEnd(result: DropResult) {
     const { draggableId, destination, source } = result
     if (!destination) return
-    // Same position — no-op
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
     const newParentId = destination.droppableId === 'root' ? null : destination.droppableId
-    const newSortOrder = destination.index
-
     const node = findNode(tree, draggableId)
     if (!node) return
 
-    // Always confirm before saving position change
+    // Compute actual sort_order from sibling values rather than using destination.index
+    // directly (which is a 0-based visual index, not a sort_order).
+    const destNode = destination.droppableId === 'root' ? null : findNode(tree, destination.droppableId)
+    const siblings = (destNode ? destNode.children : tree).filter(n => n.id !== draggableId)
+    const before = siblings[destination.index - 1]
+    const after  = siblings[destination.index]
+    let newSortOrder: number
+    if (!before && !after) {
+      newSortOrder = 1000
+    } else if (!before) {
+      newSortOrder = after.sort_order - 1
+    } else if (!after) {
+      newSortOrder = before.sort_order + 1
+    } else {
+      newSortOrder = (before.sort_order + after.sort_order) / 2
+    }
+
     openModal('movePage', {
       pageId: draggableId,
       pageName: node.name,
