@@ -3,7 +3,6 @@
 import React from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { ColorSwatch } from '@/components/ui/ColorSwatch'
 import { PageNodeMenu } from './PageNodeMenu'
 import type { PageNode as PageNodeType } from '@/types'
 
@@ -53,7 +52,7 @@ function formatClicks(n: number): string {
 }
 
 export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, showDragIcon }: Props) {
-  const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
+  const { selectedPageIds, expandedNodeIds, toggleExpand, openModal, openContextMenu } = useUiStore()
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
@@ -90,7 +89,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         `}
         style={{ paddingRight: `${depth * 20 + 12}px` }}
       >
-        {/* Drag icon — visual affordance only; actual drag handle is on the outer wrapper */}
+        {/* 1. Drag icon — visual affordance only; actual drag handle is on the outer wrapper */}
         {showDragIcon && (
           <span
             className="opacity-25 group-hover:opacity-70 shrink-0 text-slate-500 pointer-events-none select-none"
@@ -103,17 +102,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           </span>
         )}
 
-        {/* Checkbox */}
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => toggleSelect(node.id)}
-          onClick={e => e.stopPropagation()}
-          className="opacity-0 group-hover:opacity-100 data-[checked]:opacity-100 w-3.5 h-3.5 shrink-0 accent-blue-600"
-          aria-label={`בחר ${node.name}`}
-        />
-
-        {/* Expand toggle */}
+        {/* 2. Expand toggle */}
         <button
           onClick={() => hasChildren && toggleExpand(node.id)}
           className={`w-4 h-4 flex items-center justify-center shrink-0 text-slate-400 ${!hasChildren ? 'invisible' : ''}`}
@@ -125,26 +114,12 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           </svg>
         </button>
 
-        {/* Color swatch */}
-        <ColorSwatch color={node.color} size={12} />
-
-        {/* Name */}
+        {/* 3. Name */}
         <span className="flex-1 text-sm text-slate-800 truncate min-w-0">
           {searchQuery ? highlight(node.name, searchQuery) : node.name}
         </span>
 
-        {/* URL — path only, full URL in tooltip */}
-        {node.url && (
-          <span
-            className="text-xs text-slate-400 truncate max-w-[240px] hidden sm:block"
-            dir="ltr"
-            title={node.url}
-          >
-            {searchQuery ? highlight(getUrlPath(node.url), searchQuery) : getUrlPath(node.url)}
-          </span>
-        )}
-
-        {/* Descendant count */}
+        {/* 4. Descendant count */}
         {descendantCount > 0 && (
           <span
             className="text-[10px] font-medium text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
@@ -154,23 +129,10 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           </span>
         )}
 
-        {/* Subtree GSC total */}
-        {hasGscData && subtreeClicks > 0 && (
-          <span
-            className="text-[10px] font-medium text-indigo-500 bg-indigo-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
-            title={`${subtreeClicks.toLocaleString('he-IL')} קליקים סה"כ (כולל תתי-עמודים)`}
-          >
-            ↓{formatClicks(subtreeClicks)}
-          </span>
-        )}
-
-        {/* Own URL clicks */}
-        {hasGscData && ownClicks > 0 && (
-          <span
-            className="text-[10px] font-medium text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
-            title={`${ownClicks.toLocaleString('he-IL')} קליקים לעמוד זה`}
-          >
-            {formatClicks(ownClicks)}
+        {/* 5. Template (grey, less important) */}
+        {node.template && (
+          <span className="text-[10px] text-slate-300 shrink-0 hidden sm:block truncate max-w-[80px]" title={node.template}>
+            {node.template}
           </span>
         )}
 
@@ -186,7 +148,41 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         {/* Status badge */}
         {node.status !== 'existing' && <StatusBadge status={node.status} size="xs" />}
 
-        {/* Context menu */}
+        {/* 6. URL — path only, full URL in tooltip */}
+        {node.url && (
+          <span
+            className="text-xs text-slate-400 truncate max-w-[200px] hidden sm:block"
+            dir="ltr"
+            title={node.url}
+          >
+            {searchQuery ? highlight(getUrlPath(node.url), searchQuery) : getUrlPath(node.url)}
+          </span>
+        )}
+
+        {/* 7. Own URL GSC clicks (with chart icon) */}
+        {hasGscData && ownClicks > 0 && (
+          <span
+            className="flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
+            title={`${ownClicks.toLocaleString('he-IL')} קליקים לעמוד זה`}
+          >
+            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+            </svg>
+            {formatClicks(ownClicks)}
+          </span>
+        )}
+
+        {/* 8. Subtree GSC total (less important) */}
+        {hasGscData && subtreeClicks > ownClicks && (
+          <span
+            className="text-[10px] font-medium text-slate-400 bg-slate-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
+            title={`${subtreeClicks.toLocaleString('he-IL')} קליקים סה"כ (כולל תתי-עמודים)`}
+          >
+            ↓{formatClicks(subtreeClicks)}
+          </span>
+        )}
+
+        {/* 9. Context menu */}
         <PageNodeMenu node={node} />
       </div>
 

@@ -16,6 +16,7 @@ import { PageHistoryModal } from '@/components/modals/PageHistoryModal'
 import { ContextMenu } from '@/components/tree/ContextMenu'
 import { signOut } from '@/app/login/actions'
 import type { Profile } from '@/types'
+import pkg from '../../package.json'
 
 const NAV_TABS = [
   { href: '/app', label: 'מפה', exact: true },
@@ -99,6 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="bg-slate-800 text-white px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-slate-200">מנהל מבנה האתר</span>
+          <span className="text-xs text-slate-500 font-mono">v{pkg.version}</span>
           <span className="text-slate-600">|</span>
           <AccountSwitcher />
           <LastEdited accountId={activeAccount.id} />

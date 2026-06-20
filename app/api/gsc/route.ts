@@ -65,14 +65,22 @@ export async function POST(request: Request) {
     })
   }
 
+  // Deduplicate by url_normalized — keep highest-clicks row for each URL
+  const dedupMap = new Map<string, typeof rows[0]>()
+  for (const row of rows) {
+    const existing = dedupMap.get(row.url_normalized)
+    if (!existing || row.clicks > existing.clicks) dedupMap.set(row.url_normalized, row)
+  }
+  const uniqueRows = Array.from(dedupMap.values())
+
   // Transactional: delete all for account, insert new
   const adminSupa = createServiceRoleClient()
 
   const { error: deleteErr } = await adminSupa.from('gsc_clicks').delete().eq('account_id', accountId)
   if (deleteErr) return NextResponse.json({ error: deleteErr.message }, { status: 500 })
 
-  if (rows.length > 0) {
-    const insertRows = rows.map(r => ({ ...r, account_id: accountId, period, uploaded_by: user.id }))
+  if (uniqueRows.length > 0) {
+    const insertRows = uniqueRows.map(r => ({ ...r, account_id: accountId, period, uploaded_by: user.id }))
     const { error: insertErr } = await adminSupa.from('gsc_clicks').insert(insertRows)
     if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
@@ -83,10 +91,10 @@ export async function POST(request: Request) {
     user_id: user.id,
     user_name: profile?.display_name ?? user.id,
     action: 'gsc_uploaded',
-    details: { file_name: file.name, record_count: rows.length, period },
+    details: { file_name: file.name, record_count: uniqueRows.length, period },
   })
 
-  return NextResponse.json({ inserted: rows.length })
+  return NextResponse.json({ inserted: uniqueRows.length })
 }
 
 export async function GET(request: Request) {
