@@ -1,7 +1,6 @@
 'use client'
 
 import React from 'react'
-import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import { useUiStore } from '@/stores/uiStore'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { ColorSwatch } from '@/components/ui/ColorSwatch'
@@ -14,7 +13,7 @@ interface Props {
   gscClicks: Record<string, number>
   visibleIds?: Set<string> | null
   searchQuery?: string
-  dragHandleProps?: DraggableProvidedDragHandleProps | null
+  showDragIcon?: boolean
 }
 
 function countDescendants(node: PageNodeType): number {
@@ -53,7 +52,7 @@ function formatClicks(n: number): string {
   return n.toString()
 }
 
-export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, dragHandleProps }: Props) {
+export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, showDragIcon }: Props) {
   const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
@@ -86,24 +85,25 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, drag
         onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
         className={`
-          group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-default transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+          group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
           ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
         `}
         style={{ paddingRight: `${depth * 20 + 12}px` }}
       >
-        {/* Drag handle — visible on hover, only this triggers drag */}
-        <div
-          {...(dragHandleProps ?? {})}
-          className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing shrink-0 text-slate-300 hover:text-slate-500 transition-opacity touch-none"
-          title="גרור להזזה"
-          onClick={e => e.stopPropagation()}
-        >
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M7 4a1 1 0 100 2 1 1 0 000-2zM13 4a1 1 0 100 2 1 1 0 000-2zM7 9a1 1 0 100 2 1 1 0 000-2zM13 9a1 1 0 100 2 1 1 0 000-2zM7 14a1 1 0 100 2 1 1 0 000-2zM13 14a1 1 0 100 2 1 1 0 000-2z" />
-          </svg>
-        </div>
+        {/* Drag icon — visual affordance only; actual drag handle is on the outer wrapper */}
+        {showDragIcon && (
+          <span
+            className="opacity-25 group-hover:opacity-70 shrink-0 text-slate-500 pointer-events-none select-none"
+            aria-hidden="true"
+            title="גרור להזזה"
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M7 4a1 1 0 100 2 1 1 0 000-2zM13 4a1 1 0 100 2 1 1 0 000-2zM7 9a1 1 0 100 2 1 1 0 000-2zM13 9a1 1 0 100 2 1 1 0 000-2zM7 14a1 1 0 100 2 1 1 0 000-2zM13 14a1 1 0 100 2 1 1 0 000-2z" />
+            </svg>
+          </span>
+        )}
 
-        {/* Checkbox (visible on hover or when selected) */}
+        {/* Checkbox */}
         <input
           type="checkbox"
           checked={isSelected}
@@ -154,7 +154,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, drag
           </span>
         )}
 
-        {/* Subtree GSC total — only when GSC data is loaded */}
+        {/* Subtree GSC total */}
         {hasGscData && subtreeClicks > 0 && (
           <span
             className="text-[10px] font-medium text-indigo-500 bg-indigo-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
@@ -176,11 +176,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, drag
 
         {/* Notes indicator */}
         {node.notes && (
-          <span
-            title={node.notes}
-            className="text-slate-400 hover:text-slate-600 shrink-0"
-            aria-label="יש הערות"
-          >
+          <span title={node.notes} className="text-slate-400 hover:text-slate-600 shrink-0" aria-label="יש הערות">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
             </svg>

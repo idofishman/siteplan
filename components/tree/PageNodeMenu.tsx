@@ -39,7 +39,7 @@ export function PageNodeMenu({ node }: Props) {
       </button>
 
       {open && (
-        <div className="absolute start-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50">
+        <div className="absolute end-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50">
           <button
             onClick={() => action(() => openModal('addPage', { parentId: node.id }))}
             className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"

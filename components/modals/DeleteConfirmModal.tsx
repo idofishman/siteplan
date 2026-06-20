@@ -91,7 +91,7 @@ export function DeleteConfirmModal() {
         {hasChildren && (
           <div className="flex flex-col gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
             <p className="text-sm font-medium text-amber-800">
-              לדף זה יש {childCount} דף{childCount !== 1 ? 'ים' : ''} ילד. מה לעשות איתם?
+              לדף זה יש {childCount} {childCount !== 1 ? 'דפים' : 'דף'} ילד. מה לעשות איתם?
             </p>
 
             <label className="flex items-start gap-2 cursor-pointer">
@@ -103,19 +103,18 @@ export function DeleteConfirmModal() {
                 onChange={() => setMode('reassign')}
                 className="mt-0.5 accent-blue-600"
               />
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 min-w-0 w-full">
                 <span className="text-sm text-slate-700">שייך מחדש לדף אחר</span>
                 {mode === 'reassign' && (
                   <select
                     value={effectiveReassignTo}
                     onChange={e => setReassignTo(e.target.value)}
-                    className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 max-w-full"
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                   >
                     <option value="">ללא הורה (שורש)</option>
                     {reassignCandidates.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.name}{p.url ? ` (${p.url})` : ''}
-                        {p.id === defaultReassignId ? ' — הורה נוכחי' : ''}
+                        {p.name}{p.id === defaultReassignId ? ' — הורה נוכחי' : ''}
                       </option>
                     ))}
                   </select>
