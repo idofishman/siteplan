@@ -39,14 +39,16 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
                 <div
                   ref={dragProvided.innerRef}
                   {...dragProvided.draggableProps}
-                  {...dragProvided.dragHandleProps}
-                  style={{
-                    ...dragProvided.draggableProps.style,
-                    userSelect: 'none',
-                    WebkitUserSelect: 'none',
-                  }}
+                  style={dragProvided.draggableProps.style}
                 >
-                  <PageNode node={node} depth={depth} gscClicks={gscClicks} visibleIds={visibleIds} searchQuery={searchQuery} />
+                  <PageNode
+                    node={node}
+                    depth={depth}
+                    gscClicks={gscClicks}
+                    visibleIds={visibleIds}
+                    searchQuery={searchQuery}
+                    dragHandleProps={dragProvided.dragHandleProps}
+                  />
                 </div>
               )}
             </Draggable>

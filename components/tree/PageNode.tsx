@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import { useUiStore } from '@/stores/uiStore'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { ColorSwatch } from '@/components/ui/ColorSwatch'
@@ -13,10 +14,16 @@ interface Props {
   gscClicks: Record<string, number>
   visibleIds?: Set<string> | null
   searchQuery?: string
+  dragHandleProps?: DraggableProvidedDragHandleProps | null
 }
 
 function countDescendants(node: PageNodeType): number {
   return node.children.reduce((sum, child) => sum + 1 + countDescendants(child), 0)
+}
+
+function sumSubtreeClicks(node: PageNodeType, gscClicks: Record<string, number>): number {
+  const own = node.url_normalized ? (gscClicks[node.url_normalized] ?? 0) : 0
+  return node.children.reduce((sum, child) => sum + sumSubtreeClicks(child, gscClicks), own)
 }
 
 function getUrlPath(url: string): string {
@@ -41,36 +48,21 @@ function highlight(text: string, query: string): React.ReactNode {
   )
 }
 
-function GscIndicator({ clicks }: { clicks: number }) {
-  const color =
-    clicks >= 1000 ? '#F59E0B' :
-    clicks >= 200  ? '#3B82F6' :
-    clicks >= 50   ? '#22C55E' :
-    clicks >= 1    ? '#94A3B8' :
-    null
-
-  if (!color) return null
-
-  return (
-    <span
-      className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded"
-      style={{ color, backgroundColor: `${color}18` }}
-      title={`${clicks.toLocaleString()} קליקים`}
-    >
-      {clicks >= 1000 ? `${Math.round(clicks / 1000)}k` : clicks}
-    </span>
-  )
+function formatClicks(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`
+  return n.toString()
 }
 
-export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Props) {
+export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, dragHandleProps }: Props) {
   const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
-  // When searching, force-expand nodes that have visible descendants
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
   const hasChildren = node.children.length > 0
   const descendantCount = countDescendants(node)
-  const clicks = node.url_normalized ? (gscClicks[node.url_normalized] ?? 0) : 0
+  const hasGscData = Object.keys(gscClicks).length > 0
+  const ownClicks = node.url_normalized ? (gscClicks[node.url_normalized] ?? 0) : 0
+  const subtreeClicks = hasGscData ? sumSubtreeClicks(node, gscClicks) : 0
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') openModal('editPage', node)
@@ -94,11 +86,23 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Pr
         onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
         className={`
-          group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+          group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-default transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
           ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
         `}
         style={{ paddingRight: `${depth * 20 + 12}px` }}
       >
+        {/* Drag handle — visible on hover, only this triggers drag */}
+        <div
+          {...(dragHandleProps ?? {})}
+          className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing shrink-0 text-slate-300 hover:text-slate-500 transition-opacity touch-none"
+          title="גרור להזזה"
+          onClick={e => e.stopPropagation()}
+        >
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M7 4a1 1 0 100 2 1 1 0 000-2zM13 4a1 1 0 100 2 1 1 0 000-2zM7 9a1 1 0 100 2 1 1 0 000-2zM13 9a1 1 0 100 2 1 1 0 000-2zM7 14a1 1 0 100 2 1 1 0 000-2zM13 14a1 1 0 100 2 1 1 0 000-2z" />
+          </svg>
+        </div>
+
         {/* Checkbox (visible on hover or when selected) */}
         <input
           type="checkbox"
@@ -121,6 +125,25 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Pr
           </svg>
         </button>
 
+        {/* Color swatch */}
+        <ColorSwatch color={node.color} size={12} />
+
+        {/* Name */}
+        <span className="flex-1 text-sm text-slate-800 truncate min-w-0">
+          {searchQuery ? highlight(node.name, searchQuery) : node.name}
+        </span>
+
+        {/* URL — path only, full URL in tooltip */}
+        {node.url && (
+          <span
+            className="text-xs text-slate-400 truncate max-w-[240px] hidden sm:block"
+            dir="ltr"
+            title={node.url}
+          >
+            {searchQuery ? highlight(getUrlPath(node.url), searchQuery) : getUrlPath(node.url)}
+          </span>
+        )}
+
         {/* Descendant count */}
         {descendantCount > 0 && (
           <span
@@ -131,27 +154,25 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Pr
           </span>
         )}
 
-        {/* Color swatch */}
-        <ColorSwatch color={node.color} size={12} />
-
-        {/* Name */}
-        <span className="flex-1 text-sm text-slate-800 truncate min-w-0">
-          {searchQuery ? highlight(node.name, searchQuery) : node.name}
-        </span>
-
-        {/* URL — show path only, full URL in tooltip */}
-        {node.url && (
+        {/* Subtree GSC total — only when GSC data is loaded */}
+        {hasGscData && subtreeClicks > 0 && (
           <span
-            className="text-xs text-slate-400 truncate max-w-[260px] hidden sm:block"
-            dir="ltr"
-            title={node.url}
+            className="text-[10px] font-medium text-indigo-500 bg-indigo-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
+            title={`${subtreeClicks.toLocaleString('he-IL')} קליקים סה"כ (כולל תתי-עמודים)`}
           >
-            {searchQuery ? highlight(getUrlPath(node.url), searchQuery) : getUrlPath(node.url)}
+            ↓{formatClicks(subtreeClicks)}
           </span>
         )}
 
-        {/* GSC clicks */}
-        {clicks > 0 && <GscIndicator clicks={clicks} />}
+        {/* Own URL clicks */}
+        {hasGscData && ownClicks > 0 && (
+          <span
+            className="text-[10px] font-medium text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
+            title={`${ownClicks.toLocaleString('he-IL')} קליקים לעמוד זה`}
+          >
+            {formatClicks(ownClicks)}
+          </span>
+        )}
 
         {/* Notes indicator */}
         {node.notes && (
@@ -166,7 +187,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Pr
           </span>
         )}
 
-        {/* Status badge — hide "existing" since it's the default/obvious state */}
+        {/* Status badge */}
         {node.status !== 'existing' && <StatusBadge status={node.status} size="xs" />}
 
         {/* Context menu */}
