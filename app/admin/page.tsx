@@ -10,7 +10,7 @@ export default async function AdminPage() {
     { count: pageCount },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('accounts').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('accounts').select('*', { count: 'exact', head: true }),
     supabase.from('pages').select('*', { count: 'exact', head: true }),
   ])
 

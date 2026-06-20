@@ -40,6 +40,17 @@ export function PageNodeMenu({ node }: Props) {
 
       {open && (
         <div className="absolute end-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50">
+          {node.url && (
+            <a
+              href={node.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+            >
+              🔗 בקר בעמוד
+            </a>
+          )}
           <button
             onClick={() => action(() => openModal('addPage', { parentId: node.id }))}
             className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"

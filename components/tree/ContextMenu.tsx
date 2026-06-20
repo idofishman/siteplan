@@ -30,7 +30,7 @@ export function ContextMenu() {
 
   // Position menu so it always stays inside the viewport
   const MENU_W = 192
-  const MENU_H = 164
+  const MENU_H = page.url ? 204 : 164
   const PAD = 8
   // Flip horizontal: open to the left if would overflow right
   const x = contextMenu.x + MENU_W + PAD > window.innerWidth
@@ -53,6 +53,17 @@ export function ContextMenu() {
       style={{ left: x, top: y }}
       onMouseDown={e => e.stopPropagation()}
     >
+      {page.url && (
+        <a
+          href={page.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => closeContextMenu()}
+          className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+        >
+          <span>🔗</span> בקר בעמוד
+        </a>
+      )}
       <button
         onClick={() => action(() => openModal('addPage', { parentId: page.id }))}
         className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"

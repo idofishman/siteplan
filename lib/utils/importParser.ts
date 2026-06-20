@@ -58,7 +58,8 @@ export function parseXlsxRows(
 
   const header = rows[0].map(c => (c ?? '').toString().toLowerCase().trim())
   const urlColIndex = header.findIndex(h =>
-    h === 'url' || h === 'address' || h === 'loc' || h === 'page' || h === 'כתובת'
+    h === 'url' || h === 'address' || h === 'loc' || h === 'page' ||
+    h === 'landing page' || h === 'top pages' || h === 'כתובת'
   )
 
   const startRow = urlColIndex >= 0 ? 1 : 0
@@ -239,7 +240,10 @@ function parseTxtUrls(content: string, domain?: string): ParseResult {
 function parseCsvUrls(content: string, domain?: string): ParseResult {
   const lines = content.split('\n').filter(l => l.trim())
   const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''))
-  const urlColIndex = headers.findIndex(h => h === 'url' || h === 'address' || h === 'loc' || h === 'page')
+  const urlColIndex = headers.findIndex(h =>
+    h === 'url' || h === 'address' || h === 'loc' || h === 'page' ||
+    h === 'landing page' || h === 'top pages' || h === 'כתובת'
+  )
 
   const urls: ParsedUrl[] = []
   let cleanedCount = 0

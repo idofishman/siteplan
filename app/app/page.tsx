@@ -82,6 +82,7 @@ export default function AppPage() {
         {/* Left: title + collapse */}
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-sm font-medium text-slate-700">מבנה האתר</span>
+          <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">{pages.length.toLocaleString('he-IL')} עמודים</span>
           <SaveIndicator status={saveStatus} />
           <div className="flex items-center gap-1 border-r border-slate-200 pr-3 mr-1">
             <button

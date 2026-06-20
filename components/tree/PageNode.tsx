@@ -51,6 +51,23 @@ function formatClicks(n: number): string {
   return n.toString()
 }
 
+// Returns CSS-safe text color (black or white) for a given hex background, targeting WCAG AAA (7:1)
+function getContrastColor(hex: string): string {
+  const clean = hex.replace('#', '')
+  if (clean.length !== 3 && clean.length !== 6) return '#000000'
+  const full = clean.length === 3
+    ? clean.split('').map(c => c + c).join('')
+    : clean
+  const r = parseInt(full.slice(0, 2), 16) / 255
+  const g = parseInt(full.slice(2, 4), 16) / 255
+  const b = parseInt(full.slice(4, 6), 16) / 255
+  const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+  const contrastWhite = (1.05) / (L + 0.05)
+  const contrastBlack = (L + 0.05) / 0.05
+  return contrastWhite >= contrastBlack ? '#ffffff' : '#000000'
+}
+
 export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, showDragIcon }: Props) {
   const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
   const isSearching = visibleIds !== null && visibleIds !== undefined
@@ -61,6 +78,8 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
   const hasGscData = Object.keys(gscClicks).length > 0
   const ownClicks = node.url_normalized ? (gscClicks[node.url_normalized] ?? 0) : 0
   const subtreeClicks = hasGscData ? sumSubtreeClicks(node, gscClicks) : 0
+  const bgColor = node.color ?? null
+  const textColor = bgColor ? getContrastColor(bgColor) : undefined
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') openModal('editPage', node)
@@ -85,9 +104,12 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         onContextMenu={handleContextMenu}
         className={`
           group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-          ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
+          ${!bgColor ? (isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50') : ''}
         `}
-        style={{ paddingRight: `${depth * 20 + 12}px` }}
+        style={{
+          paddingRight: `${depth * 20 + 12}px`,
+          ...(bgColor ? { backgroundColor: bgColor, color: textColor } : {}),
+        }}
       >
         {/* 1. Drag icon — visual affordance only; actual drag handle is on the outer wrapper */}
         {showDragIcon && (
@@ -102,10 +124,11 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           </span>
         )}
 
-        {/* 2. Expand toggle */}
+        {/* 2. Expand toggle — always takes fixed width for alignment */}
         <button
           onClick={() => hasChildren && toggleExpand(node.id)}
-          className={`w-4 h-4 flex items-center justify-center shrink-0 text-slate-400 ${!hasChildren ? 'invisible' : ''}`}
+          className={`w-4 h-4 flex items-center justify-center shrink-0 ${!hasChildren ? 'invisible' : (bgColor ? '' : 'text-slate-400')}`}
+          style={bgColor ? { color: textColor } : undefined}
           aria-expanded={isExpanded}
           aria-label={isExpanded ? 'כווץ' : 'הרחב'}
         >
@@ -115,72 +138,92 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         </button>
 
         {/* 3. Name */}
-        <span className="flex-1 text-sm text-slate-800 truncate min-w-0">
+        <span className="flex-1 text-sm truncate min-w-0" style={bgColor ? { color: textColor } : { color: '#1e293b' }}>
           {searchQuery ? highlight(node.name, searchQuery) : node.name}
         </span>
 
-        {/* 4. Descendant count */}
-        {descendantCount > 0 && (
-          <span
-            className="text-[10px] font-medium text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
-            title={`${descendantCount} עמודים מתחת`}
-          >
-            {descendantCount}
-          </span>
-        )}
+        {/* 4. Descendant count — fixed slot, empty when zero */}
+        <span className="w-8 shrink-0 text-right">
+          {descendantCount > 0 && (
+            <span
+              className={`text-[10px] font-medium rounded-full px-1.5 py-0.5 leading-none tabular-nums ${bgColor ? 'bg-black/10' : 'text-slate-400 bg-slate-100'}`}
+              style={bgColor ? { color: textColor } : undefined}
+              title={`${descendantCount} עמודים מתחת`}
+            >
+              {descendantCount}
+            </span>
+          )}
+        </span>
 
-        {/* 5. Template (grey, less important) */}
-        {node.template && (
-          <span className="text-[10px] text-slate-300 shrink-0 hidden sm:block truncate max-w-[80px]" title={node.template}>
-            {node.template}
-          </span>
-        )}
+        {/* 5. Template — fixed slot */}
+        <span className="w-20 shrink-0 hidden sm:block">
+          {node.template && (
+            <span
+              className={`text-[10px] truncate block ${bgColor ? 'opacity-70' : 'text-slate-300'}`}
+              style={bgColor ? { color: textColor } : undefined}
+              title={node.template}
+            >
+              {node.template}
+            </span>
+          )}
+        </span>
 
-        {/* Notes indicator */}
-        {node.notes && (
-          <span title={node.notes} className="text-slate-400 hover:text-slate-600 shrink-0" aria-label="יש הערות">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-            </svg>
-          </span>
-        )}
+        {/* Notes + Status — fixed slot */}
+        <span className="w-8 shrink-0 flex items-center gap-1">
+          {node.notes && (
+            <span title={node.notes} className={`shrink-0 ${bgColor ? '' : 'text-slate-400 hover:text-slate-600'}`} style={bgColor ? { color: textColor } : undefined} aria-label="יש הערות">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+            </span>
+          )}
+          {node.status !== 'existing' && <StatusBadge status={node.status} size="xs" />}
+        </span>
 
-        {/* Status badge */}
-        {node.status !== 'existing' && <StatusBadge status={node.status} size="xs" />}
+        {/* 6. URL — fixed slot, clickable to open in new tab */}
+        <span className="w-[180px] shrink-0 hidden sm:block">
+          {node.url && (
+            <a
+              href={node.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className={`text-xs truncate block hover:underline ${bgColor ? '' : 'text-slate-400 hover:text-blue-500'}`}
+              style={bgColor ? { color: textColor } : undefined}
+              dir="ltr"
+              title={node.url}
+            >
+              {searchQuery ? highlight(getUrlPath(node.url), searchQuery) : getUrlPath(node.url)}
+            </a>
+          )}
+        </span>
 
-        {/* 6. URL — path only, full URL in tooltip */}
-        {node.url && (
-          <span
-            className="text-xs text-slate-400 truncate max-w-[200px] hidden sm:block"
-            dir="ltr"
-            title={node.url}
-          >
-            {searchQuery ? highlight(getUrlPath(node.url), searchQuery) : getUrlPath(node.url)}
-          </span>
-        )}
+        {/* 7. Own GSC clicks — fixed slot */}
+        <span className="w-14 shrink-0 flex justify-end">
+          {hasGscData && ownClicks > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5 leading-none tabular-nums"
+              title={`${ownClicks.toLocaleString('he-IL')} קליקים לעמוד זה`}
+            >
+              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+              </svg>
+              {formatClicks(ownClicks)}
+            </span>
+          )}
+        </span>
 
-        {/* 7. Own URL GSC clicks (with chart icon) */}
-        {hasGscData && ownClicks > 0 && (
-          <span
-            className="flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
-            title={`${ownClicks.toLocaleString('he-IL')} קליקים לעמוד זה`}
-          >
-            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-            </svg>
-            {formatClicks(ownClicks)}
-          </span>
-        )}
-
-        {/* 8. Subtree GSC total (less important) */}
-        {hasGscData && subtreeClicks > ownClicks && (
-          <span
-            className="text-[10px] font-medium text-slate-400 bg-slate-50 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
-            title={`${subtreeClicks.toLocaleString('he-IL')} קליקים סה"כ (כולל תתי-עמודים)`}
-          >
-            ↓{formatClicks(subtreeClicks)}
-          </span>
-        )}
+        {/* 8. Subtree GSC — fixed slot */}
+        <span className="w-12 shrink-0 flex justify-end">
+          {hasGscData && subtreeClicks > ownClicks && (
+            <span
+              className="text-[10px] font-medium text-slate-400 bg-slate-50 rounded-full px-1.5 py-0.5 leading-none tabular-nums"
+              title={`${subtreeClicks.toLocaleString('he-IL')} קליקים סה"כ (כולל תתי-עמודים)`}
+            >
+              ↓{formatClicks(subtreeClicks)}
+            </span>
+          )}
+        </span>
 
         {/* 9. Context menu */}
         <PageNodeMenu node={node} />
