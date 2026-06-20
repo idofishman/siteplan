@@ -1,8 +1,9 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { verifyAccountAccess } from '@/lib/utils/auth'
-import { parseSitemapContent } from '@/lib/utils/importParser'
+import { parseSitemapContent, parseXlsxRows } from '@/lib/utils/importParser'
 import { buildImportPlan } from '@/lib/utils/importEngine'
+import type { ParseResult } from '@/lib/utils/importParser'
 
 export async function POST(request: Request) {
   const supabase = createServerClient()
@@ -20,9 +21,31 @@ export async function POST(request: Request) {
   if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data: account } = await supabase.from('accounts').select('domain').eq('id', accountId).single()
-  const content = await file.text()
+  const domain = account?.domain ?? undefined
 
-  const parsed = parseSitemapContent(content, account?.domain ?? undefined)
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+
+  let parsed: ParseResult
+
+  if (ext === 'xlsx') {
+    // Dynamic import keeps xlsx out of the client bundle
+    const XLSX = await import('xlsx')
+    const buffer = await file.arrayBuffer()
+    const workbook = XLSX.read(buffer, { type: 'array' })
+    const sheetName = workbook.SheetNames[0]
+    if (!sheetName) return NextResponse.json({ error: 'קובץ XLSX ריק' }, { status: 400 })
+    const sheet = workbook.Sheets[sheetName]
+    const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+    parsed = parseXlsxRows(rows, domain)
+  } else {
+    const content = await file.text()
+    parsed = parseSitemapContent(content, domain)
+  }
+
+  if (parsed.error) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 })
+  }
+
   if (parsed.urls.length === 0) {
     return NextResponse.json({ error: 'לא נמצאו כתובות URL בקובץ' }, { status: 400 })
   }

@@ -50,7 +50,7 @@ export function ImportModal({ onPlanReady }: Props) {
         onClick={e => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold text-slate-800">ייבוא מפת אתר</h2>
-        <p className="text-sm text-slate-500">תמיכה בפורמטים: XML Sitemap, רשימת URL (TXT), CSV</p>
+        <p className="text-sm text-slate-500">תמיכה בפורמטים: XLSX, CSV, JSON</p>
 
         <div
           className="border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-xl p-8 text-center cursor-pointer transition-colors"
@@ -65,7 +65,7 @@ export function ImportModal({ onPlanReady }: Props) {
           <input
             ref={inputRef}
             type="file"
-            accept=".xml,.txt,.csv,text/plain,text/csv,application/xml,text/xml"
+            accept=".xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json"
             className="hidden"
             onChange={e => {
               const f = e.target.files?.[0]

@@ -10,6 +10,8 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal'
 import { MoveConfirmModal } from '@/components/modals/MoveConfirmModal'
 import { BulkToolbar } from '@/components/tree/BulkToolbar'
 import { BulkActionModal } from '@/components/modals/BulkActionModal'
+import { ImportModal } from '@/components/modals/ImportModal'
+import { ImportPreviewModal } from '@/components/modals/ImportPreviewModal'
 
 export default function AppPage() {
   const { activeAccount } = useAccountStore()
@@ -27,6 +29,12 @@ export default function AppPage() {
           <SaveIndicator status={saveStatus} />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => openModal('import', {})}
+            className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition-colors"
+          >
+            ייבא נתונים
+          </button>
           <button
             onClick={() => openModal('addPage', {})}
             className="text-sm px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white transition-colors"
@@ -49,6 +57,8 @@ export default function AppPage() {
       <DeleteConfirmModal />
       <MoveConfirmModal />
       <BulkActionModal />
+      <ImportModal onPlanReady={() => {}} />
+      <ImportPreviewModal />
     </div>
   )
 }

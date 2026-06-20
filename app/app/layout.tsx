@@ -1,15 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { useAccountStore } from '@/stores/accountStore'
 import { AccountSwitcher } from '@/components/account/AccountSwitcher'
 import { PresenceBar } from '@/components/presence/PresenceBar'
 import { signOut } from '@/app/login/actions'
 import type { Profile } from '@/types'
 
+const NAV_TABS = [
+  { href: '/app', label: 'מפה', exact: true },
+  { href: '/app/activity', label: 'פעילות', exact: false },
+  { href: '/app/snapshots', label: 'צלמיות', exact: false },
+  { href: '/app/gsc', label: 'כתובות חסרות', exact: false },
+]
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { activeAccount, loadAccounts, setActiveAccount } = useAccountStore()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [ready, setReady] = useState(false)
@@ -75,7 +84,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <PresenceBar />
-      <main className="flex-1">{children}</main>
+
+      {/* Navigation tabs */}
+      <nav className="bg-white border-b border-slate-200 px-4 flex gap-1 shrink-0">
+        {NAV_TABS.map(tab => {
+          const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`text-sm px-3 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
+                active
+                  ? 'border-blue-500 text-blue-600 font-medium'
+                  : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   )
 }

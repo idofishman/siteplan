@@ -2,7 +2,8 @@
 **Date:** 2026-06-20  
 **Auditor:** Claude Code (automated + static analysis)  
 **Versions reviewed:** PRD.md, Architecture.md, Database.md, UserFlows.md, UI-Spec.md, Deployment.md, Implementation-Plan.md (all v2.1.1 dated 2026-06-19)  
-**Build status at time of audit:** ✅ Clean build (29 routes, 0 TypeScript errors)
+**Build status at time of audit:** ✅ Clean build (29 routes, 0 TypeScript errors)  
+**Last updated:** 2026-06-20 — navigation and import accessibility fixes applied
 
 ---
 
@@ -152,6 +153,24 @@ The modal asks the user to type "DELETE". UI-Spec.md §22 and Implementation-Pla
 ### U-1: Session expiry — no toast message
 
 Phase 14 checklist item and PRD §4.3 specify showing "פג תוקף החיבור" when a user is redirected due to session expiry. The `SIGNED_OUT` event triggers a redirect to `/login` but no toast is displayed. The user has no indication why they were logged out.
+
+### ✅ U-1 FIXED (navigation tabs): Session expiry toast remains open — see U-1 above
+
+### ✅ FIXED: Missing navigation tabs (Bug B from navigation audit)
+
+All four app pages now have nav tabs in `app/app/layout.tsx`:  
+מפה (`/app`) · פעילות (`/app/activity`) · צלמיות (`/app/snapshots`) · כתובות חסרות (`/app/gsc`)
+
+### ✅ FIXED: ImportModal unreachable (Bug A from navigation audit)
+
+`ImportModal` and `ImportPreviewModal` are now rendered in `app/app/page.tsx`.  
+A "ייבא נתונים" toolbar button opens the modal via `openModal('import', {})`.
+
+### ✅ FIXED: JSON and XLSX parsing not implemented (Bug C from navigation audit)
+
+- `lib/utils/importParser.ts`: added `parseJsonUrls()` (supports array of strings, `{url}` objects, `{urls:[]}` wrappers) and `parseXlsxRows()` (detects URL column by header name).
+- `app/api/import/analyze/route.ts`: dispatches on file extension — `.xlsx` uses `import('xlsx')` + `parseXlsxRows`; `.json` and `.csv` use the text-based parser.
+- `ImportModal.tsx`: accept attribute and description updated to XLSX/CSV/JSON only.
 
 ### U-2: Missing route — `/app/app/missing-urls/`
 
