@@ -11,7 +11,6 @@ export interface ContextMenuState {
 interface UiStore {
   selectedPageIds: Set<string>
   expandedNodeIds: Set<string>
-  isDragging: boolean
   activeModal: string | null
   modalPayload: unknown
   contextMenu: ContextMenuState | null
@@ -24,7 +23,6 @@ interface UiStore {
   expandAll: (ids: string[]) => void
   collapseAll: (keepId?: string) => void
   initExpanded: () => void
-  setDragging: (v: boolean) => void
 
   openModal: (name: string, payload?: unknown) => void
   closeModal: () => void
@@ -36,7 +34,6 @@ interface UiStore {
 export const useUiStore = create<UiStore>((set, get) => ({
   selectedPageIds: new Set(),
   expandedNodeIds: new Set(),
-  isDragging: false,
   activeModal: null,
   modalPayload: undefined,
   contextMenu: null,
@@ -101,10 +98,6 @@ export const useUiStore = create<UiStore>((set, get) => ({
 
   closeModal() {
     set({ activeModal: null, modalPayload: undefined })
-  },
-
-  setDragging(v: boolean) {
-    set({ isDragging: v })
   },
 
   openContextMenu(state: ContextMenuState) {
