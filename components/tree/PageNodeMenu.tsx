@@ -52,6 +52,12 @@ export function PageNodeMenu({ node }: Props) {
           >
             ✏️ עריכה
           </button>
+          <button
+            onClick={() => action(() => openModal('pageHistory', { pageId: node.id, pageName: node.name }))}
+            className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            📋 היסטוריית שינויים
+          </button>
           <hr className="border-slate-100" />
           <button
             onClick={() => action(() => openModal('deletePage', { pageId: node.id, pageName: node.name }))}

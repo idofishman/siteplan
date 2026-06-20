@@ -2,11 +2,18 @@ import { create } from 'zustand'
 
 const EXPANDED_KEY = 'sitemap_expanded_nodes'
 
+export interface ContextMenuState {
+  x: number
+  y: number
+  pageId: string
+}
+
 interface UiStore {
   selectedPageIds: Set<string>
   expandedNodeIds: Set<string>
   activeModal: string | null
   modalPayload: unknown
+  contextMenu: ContextMenuState | null
 
   toggleSelect: (id: string) => void
   selectAll: (ids: string[]) => void
@@ -19,6 +26,9 @@ interface UiStore {
 
   openModal: (name: string, payload?: unknown) => void
   closeModal: () => void
+
+  openContextMenu: (state: ContextMenuState) => void
+  closeContextMenu: () => void
 }
 
 export const useUiStore = create<UiStore>((set, get) => ({
@@ -26,6 +36,7 @@ export const useUiStore = create<UiStore>((set, get) => ({
   expandedNodeIds: new Set(),
   activeModal: null,
   modalPayload: undefined,
+  contextMenu: null,
 
   toggleSelect(id: string) {
     set(state => {
@@ -82,10 +93,18 @@ export const useUiStore = create<UiStore>((set, get) => ({
   },
 
   openModal(name: string, payload?: unknown) {
-    set({ activeModal: name, modalPayload: payload })
+    set({ activeModal: name, modalPayload: payload, contextMenu: null })
   },
 
   closeModal() {
     set({ activeModal: null, modalPayload: undefined })
+  },
+
+  openContextMenu(state: ContextMenuState) {
+    set({ contextMenu: state })
+  },
+
+  closeContextMenu() {
+    set({ contextMenu: null })
   },
 }))

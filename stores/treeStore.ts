@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Page, PageNode, BulkOperationPayload, ImportApplyPayload, ImportApplyResult } from '@/types'
 import { buildTree } from '@/lib/utils/tree'
+import { useUiStore } from '@/stores/uiStore'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -16,7 +17,7 @@ interface TreeStore {
 
   addPage: (data: Partial<Page>) => Promise<void>
   updatePage: (id: string, data: Partial<Page>) => Promise<void>
-  deletePage: (id: string) => Promise<void>
+  deletePage: (id: string, options?: { reassign_to?: string; cascade?: boolean }) => Promise<void>
   movePage: (id: string, newParentId: string | null, newSortOrder: number) => Promise<void>
 
   bulkOperation: (payload: BulkOperationPayload) => Promise<void>
@@ -48,6 +49,11 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
     if (!res.ok) return
     const pages: Page[] = await res.json()
     set(setTree(pages))
+    // Always keep homepage expanded
+    const homepage = pages.find(p => p.template === 'homepage' && !p.parent_id)
+    if (homepage) {
+      useUiStore.getState().expandAll([homepage.id])
+    }
   },
 
   async loadGsc(accountId: string) {
@@ -123,16 +129,38 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
     }
   },
 
-  async deletePage(id: string) {
+  async deletePage(id: string, options?: { reassign_to?: string; cascade?: boolean }) {
     const prev = get().pages
-    set(state => setTree(state.pages.filter(p => p.id !== id)))
+    // Optimistically remove deleted page (and children if cascade)
+    if (options?.cascade) {
+      const { getDescendantIds } = await import('@/lib/utils/tree')
+      const descendantIds = getDescendantIds(get().tree, id)
+      set(state => setTree(state.pages.filter(p => p.id !== id && !descendantIds.includes(p.id))))
+    } else if (options?.reassign_to) {
+      set(state => setTree(
+        state.pages
+          .filter(p => p.id !== id)
+          .map(p => p.parent_id === id ? { ...p, parent_id: options.reassign_to! } : p)
+      ))
+    } else {
+      set(state => setTree(state.pages.filter(p => p.id !== id)))
+    }
     set({ saveStatus: 'saving' })
 
     try {
-      const res = await fetch(`/api/pages/${id}`, { method: 'DELETE' })
+      const body = options ? JSON.stringify(options) : undefined
+      const res = await fetch(`/api/pages/${id}`, {
+        method: 'DELETE',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body,
+      })
       if (!res.ok) throw new Error('Failed')
       set({ saveStatus: 'saved' })
       setTimeout(() => set({ saveStatus: 'idle' }), 3000)
+      // Reload to sync server state (reassignment may have changed parent_id)
+      if (options?.reassign_to || options?.cascade) {
+        await get().loadPages(get().accountId!)
+      }
     } catch {
       set(setTree(prev))
       set({ saveStatus: 'error' })

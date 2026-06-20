@@ -10,6 +10,8 @@ import { PresenceBar } from '@/components/presence/PresenceBar'
 import { LastEdited } from '@/components/ui/LastEdited'
 import { ImportModal } from '@/components/modals/ImportModal'
 import { ImportPreviewModal } from '@/components/modals/ImportPreviewModal'
+import { PageHistoryModal } from '@/components/modals/PageHistoryModal'
+import { ContextMenu } from '@/components/tree/ContextMenu'
 import { signOut } from '@/app/login/actions'
 import type { Profile } from '@/types'
 
@@ -121,9 +123,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-auto">{children}</main>
 
-      {/* Import modals — rendered at layout level so import is accessible from any page */}
+      {/* Modals and overlays — rendered at layout level */}
       <ImportModal onPlanReady={() => {}} />
       <ImportPreviewModal />
+      <PageHistoryModal />
+      <ContextMenu />
     </div>
   )
 }

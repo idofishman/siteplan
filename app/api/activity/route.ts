@@ -29,10 +29,12 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: false })
     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
+  const entityId = searchParams.get('entity_id')
   if (userId) query = query.eq('user_id', userId)
   if (action) query = query.eq('action', action)
   if (from) query = query.gte('created_at', from)
   if (to) query = query.lte('created_at', to)
+  if (entityId) query = query.eq('entity_id', entityId)
 
   const { data, count, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

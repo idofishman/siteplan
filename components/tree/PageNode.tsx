@@ -34,7 +34,7 @@ function GscIndicator({ clicks }: { clicks: number }) {
 }
 
 export function PageNode({ node, depth, gscClicks }: Props) {
-  const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal } = useUiStore()
+  const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
   const isExpanded = expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
   const hasChildren = node.children.length > 0
@@ -46,6 +46,11 @@ export function PageNode({ node, depth, gscClicks }: Props) {
     if (e.key === ' ') { e.preventDefault(); toggleSelect(node.id) }
   }
 
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault()
+    openContextMenu({ x: e.clientX, y: e.clientY, pageId: node.id })
+  }
+
   return (
     <div>
       <div
@@ -55,6 +60,7 @@ export function PageNode({ node, depth, gscClicks }: Props) {
         aria-selected={isSelected}
         aria-expanded={hasChildren ? isExpanded : undefined}
         onKeyDown={handleKeyDown}
+        onContextMenu={handleContextMenu}
         className={`
           group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
           ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
