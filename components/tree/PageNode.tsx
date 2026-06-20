@@ -228,17 +228,6 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         {/* 9. Context menu */}
         <PageNodeMenu node={node} />
       </div>
-
-      {/* Children */}
-      {isExpanded && node.children.length > 0 && (
-        <div>
-          {node.children
-            .filter(child => !visibleIds || visibleIds.has(child.id))
-            .map(child => (
-              <PageNode key={child.id} node={child} depth={depth + 1} gscClicks={gscClicks} visibleIds={visibleIds} searchQuery={searchQuery} />
-            ))}
-        </div>
-      )}
     </div>
   )
 }

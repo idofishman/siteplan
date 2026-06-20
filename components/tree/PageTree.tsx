@@ -9,20 +9,18 @@ import { PageNode } from './PageNode'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { PageNode as PageNodeType } from '@/types'
 
-interface Props {
-  accountId: string
-  visibleIds?: Set<string> | null
-  searchQuery?: string
-}
-
-function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, searchQuery }: {
+interface LevelProps {
   nodes: PageNodeType[]
   droppableId: string
   depth: number
   gscClicks: Record<string, number>
   visibleIds?: Set<string> | null
   searchQuery?: string
-}) {
+}
+
+function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, searchQuery }: LevelProps) {
+  const { expandedNodeIds } = useUiStore()
+  const isSearching = visibleIds !== null && visibleIds !== undefined
   const filteredNodes = visibleIds ? nodes.filter(n => visibleIds.has(n.id)) : nodes
 
   return (
@@ -31,33 +29,54 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
         <div
           ref={provided.innerRef}
           {...provided.droppableProps}
-          className={snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg' : ''}
+          className={snapshot.isDraggingOver ? 'bg-blue-50/50 rounded-lg' : ''}
         >
-          {filteredNodes.map((node, index) => (
-            <Draggable key={node.id} draggableId={node.id} index={index}>
-              {(dragProvided) => (
-                <div
-                  ref={dragProvided.innerRef}
-                  {...dragProvided.draggableProps}
-                  {...dragProvided.dragHandleProps}
-                  style={{
-                    ...dragProvided.draggableProps.style,
-                    userSelect: 'none',
-                    WebkitUserSelect: 'none',
-                  }}
-                >
-                  <PageNode
-                    node={node}
-                    depth={depth}
-                    gscClicks={gscClicks}
-                    visibleIds={visibleIds}
-                    searchQuery={searchQuery}
-                    showDragIcon
-                  />
-                </div>
-              )}
-            </Draggable>
-          ))}
+          {filteredNodes.map((node, index) => {
+            const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
+            const hasChildren = node.children.length > 0
+
+            return (
+              <Draggable key={node.id} draggableId={node.id} index={index}>
+                {(dragProvided, dragSnapshot) => (
+                  <div
+                    ref={dragProvided.innerRef}
+                    {...dragProvided.draggableProps}
+                    style={{
+                      ...dragProvided.draggableProps.style,
+                      opacity: dragSnapshot.isDragging ? 0.85 : 1,
+                    }}
+                  >
+                    {/* Row: only this element is the drag handle */}
+                    <div
+                      {...dragProvided.dragHandleProps}
+                      style={{ userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
+                    >
+                      <PageNode
+                        node={node}
+                        depth={depth}
+                        gscClicks={gscClicks}
+                        visibleIds={visibleIds}
+                        searchQuery={searchQuery}
+                        showDragIcon
+                      />
+                    </div>
+
+                    {/* Children rendered outside the drag handle so they don't trigger parent drag */}
+                    {hasChildren && isExpanded && (
+                      <DroppableLevel
+                        nodes={node.children}
+                        droppableId={node.id}
+                        depth={depth + 1}
+                        gscClicks={gscClicks}
+                        visibleIds={visibleIds}
+                        searchQuery={searchQuery}
+                      />
+                    )}
+                  </div>
+                )}
+              </Draggable>
+            )
+          })}
           {provided.placeholder}
         </div>
       )}
@@ -65,7 +84,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
   )
 }
 
-export function PageTree({ accountId, visibleIds, searchQuery }: Props) {
+export function PageTree({ accountId, visibleIds, searchQuery }: { accountId: string; visibleIds?: Set<string> | null; searchQuery?: string }) {
   const { tree, gscClicks, loadPages, loadGsc } = useTreeStore()
   const { initExpanded } = useUiStore()
 
@@ -97,7 +116,14 @@ export function PageTree({ accountId, visibleIds, searchQuery }: Props) {
 
   return (
     <DragDropProvider>
-      <DroppableLevel nodes={tree} droppableId="root" depth={0} gscClicks={gscClicks} visibleIds={visibleIds} searchQuery={searchQuery} />
+      <DroppableLevel
+        nodes={tree}
+        droppableId="root"
+        depth={0}
+        gscClicks={gscClicks}
+        visibleIds={visibleIds}
+        searchQuery={searchQuery}
+      />
     </DragDropProvider>
   )
 }

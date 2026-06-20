@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
   for (let i = 1; i < lines.length; i++) {
     const parts = lines[i].split(',')
-    const urlOriginal = col(parts, 'page') || col(parts, 'url') || col(parts, 'top pages')
+    const urlOriginal = col(parts, 'page') || col(parts, 'url') || col(parts, 'top pages') || col(parts, 'landing page')
     if (!urlOriginal) continue
     const normalized = normalizeUrl(urlOriginal, account?.domain ?? undefined)
     if (!normalized) continue
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     rows.push({
       url_original: urlOriginal,
       url_normalized: normalized,
-      clicks: parseInt(col(parts, 'clicks'), 10) || 0,
+      clicks: parseInt(col(parts, 'clicks') || col(parts, 'url clicks'), 10) || 0,
       impressions: parseInt(col(parts, 'impressions'), 10) || null,
       ctr,
       position: parseFloat(col(parts, 'position')) || null,
@@ -78,16 +78,26 @@ export async function POST(request: Request) {
   }
   const uniqueRows = Array.from(dedupMap.values())
 
-  // Transactional: delete all for account, insert new
+  if (uniqueRows.length === 0) {
+    return NextResponse.json({ error: 'לא נמצאו נתונים תקינים בקובץ — ודא שקיימת עמודת URL (page / landing page / top pages)' }, { status: 400 })
+  }
+
   const adminSupa = createServiceRoleClient()
+
+  // Backup existing data so we can restore if the insert fails
+  const { data: backup } = await adminSupa.from('gsc_clicks').select('*').eq('account_id', accountId)
 
   const { error: deleteErr } = await adminSupa.from('gsc_clicks').delete().eq('account_id', accountId)
   if (deleteErr) return NextResponse.json({ error: deleteErr.message }, { status: 500 })
 
-  if (uniqueRows.length > 0) {
-    const insertRows = uniqueRows.map(r => ({ ...r, account_id: accountId, uploaded_by: user.id }))
-    const { error: insertErr } = await adminSupa.from('gsc_clicks').insert(insertRows)
-    if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
+  const insertRows = uniqueRows.map(r => ({ ...r, account_id: accountId, uploaded_by: user.id }))
+  const { error: insertErr } = await adminSupa.from('gsc_clicks').insert(insertRows)
+  if (insertErr) {
+    // Restore backup so previous data is not lost
+    if (backup && backup.length > 0) {
+      await adminSupa.from('gsc_clicks').insert(backup)
+    }
+    return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
 
   const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).single()
