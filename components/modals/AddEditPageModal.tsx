@@ -48,6 +48,7 @@ export function AddEditPageModal() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) { setError('שם העמוד הוא שדה חובה'); return }
+    if (!url.trim()) { setError('כתובת URL היא שדה חובה'); return }
     setSaving(true)
     setError(null)
 
@@ -103,7 +104,7 @@ export function AddEditPageModal() {
 
         {/* URL */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700">כתובת URL</label>
+          <label className="text-sm font-medium text-slate-700">כתובת URL *</label>
           <input
             dir="ltr"
             value={url}

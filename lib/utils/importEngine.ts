@@ -91,8 +91,8 @@ export function buildImportPlan(
       fileUrlToCanonicalTempId.set(norm, p.temp_id ?? norm)
     }
 
-    // Pages with no url_normalized are allowed only when they have a name
-    if (!norm && !p.name?.trim()) continue
+    // URL is required — skip items without a normalized URL
+    if (!norm) continue
 
     // Check against existing DB pages
     const existing = norm ? existingMap.get(norm) : undefined

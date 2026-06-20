@@ -15,6 +15,10 @@ interface Props {
   searchQuery?: string
 }
 
+function countDescendants(node: PageNodeType): number {
+  return node.children.reduce((sum, child) => sum + 1 + countDescendants(child), 0)
+}
+
 function getUrlPath(url: string): string {
   try {
     const u = new URL(url.startsWith('http') ? url : `https://x${url.startsWith('/') ? '' : '/'}${url}`)
@@ -65,6 +69,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Pr
   const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
   const hasChildren = node.children.length > 0
+  const descendantCount = countDescendants(node)
   const clicks = node.url_normalized ? (gscClicks[node.url_normalized] ?? 0) : 0
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -115,6 +120,16 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery }: Pr
             <path fillRule="evenodd" d="M7.293 4.707a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L11.586 10 7.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
+
+        {/* Descendant count */}
+        {descendantCount > 0 && (
+          <span
+            className="text-[10px] font-medium text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5 leading-none shrink-0 tabular-nums"
+            title={`${descendantCount} עמודים מתחת`}
+          >
+            {descendantCount}
+          </span>
+        )}
 
         {/* Color swatch */}
         <ColorSwatch color={node.color} size={12} />
