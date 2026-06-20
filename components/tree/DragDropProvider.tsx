@@ -26,11 +26,16 @@ export function DragDropProvider({ children }: Props) {
     const siblings = (destNode ? destNode.children : tree).filter(n => n.id !== draggableId)
     const before = siblings[destination.index - 1]
     const after  = siblings[destination.index]
+    // Treat null/undefined sort_order as 0 to avoid NaN from arithmetic
+    const bOrd = before ? (Number(before.sort_order) || 0) : undefined
+    const aOrd = after  ? (Number(after.sort_order)  || 0) : undefined
     let newSortOrder: number
-    if (!before && !after)   newSortOrder = 1000
-    else if (!before)        newSortOrder = after.sort_order - 1
-    else if (!after)         newSortOrder = before.sort_order + 1
-    else                     newSortOrder = (before.sort_order + after.sort_order) / 2
+    if (bOrd === undefined && aOrd === undefined) newSortOrder = (destination.index + 1) * 1000
+    else if (bOrd === undefined)                  newSortOrder = aOrd! - 1000
+    else if (aOrd === undefined)                  newSortOrder = bOrd + 1000
+    else                                          newSortOrder = Math.round((bOrd + aOrd) / 2)
+    // Final safety net
+    if (!isFinite(newSortOrder) || isNaN(newSortOrder)) newSortOrder = (destination.index + 1) * 1000
 
     const isSameParent = source.droppableId === destination.droppableId
 

@@ -59,21 +59,24 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const userName = await getDisplayName(supabase, user.id)
-  const isMove = 'parent_id' in body || 'sort_order' in body
-
-  await logActivity(supabase, {
-    account_id: page.account_id,
-    user_id: user.id,
-    user_name: userName,
-    action: isMove ? 'page_moved' : 'page_edited',
-    entity_type: 'page',
-    entity_id: page.id,
-    entity_name: updated.name,
-    details: isMove
-      ? { from_parent: prev.parent_id, to_parent: updated.parent_id }
-      : { prev: { name: prev.name, status: prev.status, url: prev.url }, next: { name: updated.name, status: updated.status, url: updated.url } },
-  })
+  try {
+    const userName = await getDisplayName(supabase, user.id)
+    const isMove = 'parent_id' in body || 'sort_order' in body
+    await logActivity(supabase, {
+      account_id: page.account_id,
+      user_id: user.id,
+      user_name: userName,
+      action: isMove ? 'page_moved' : 'page_edited',
+      entity_type: 'page',
+      entity_id: page.id,
+      entity_name: updated.name,
+      details: isMove
+        ? { from_parent: prev.parent_id, to_parent: updated.parent_id }
+        : { prev: { name: prev.name, status: prev.status, url: prev.url }, next: { name: updated.name, status: updated.status, url: updated.url } },
+    })
+  } catch (e) {
+    console.error('[PATCH /api/pages] logActivity failed (non-fatal):', e)
+  }
 
   return NextResponse.json(updated)
 }

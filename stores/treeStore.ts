@@ -180,12 +180,17 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parent_id: newParentId, sort_order: newSortOrder }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error('[movePage] API error:', err)
+        throw new Error(err.error ?? 'Failed')
+      }
       const page: Page = await res.json()
       set(state => setTree(state.pages.map(p => p.id === id ? page : p)))
       set({ saveStatus: 'saved' })
       setTimeout(() => set({ saveStatus: 'idle' }), 3000)
-    } catch {
+    } catch (e) {
+      console.error('[movePage] error:', e)
       set(setTree(prev))
       set({ saveStatus: 'error' })
     }
