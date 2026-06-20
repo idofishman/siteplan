@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   // Defensive dedup: even if the client sends duplicates, skip them here
   const seenNorm = new Set<string>()
-  const toAdd = urls.filter(u => {
+  let toAdd = urls.filter(u => {
     if (u.action !== 'add') return false
     if (!u.url_normalized) return true // no-URL pages (name-only) are always allowed
     if (seenNorm.has(u.url_normalized)) return false
@@ -28,6 +28,23 @@ export async function POST(request: Request) {
     return true
   })
   if (toAdd.length === 0) return NextResponse.json({ inserted: 0 })
+
+  // Final DB check — remove any URLs that already exist (handles race conditions
+  // and cases where the analyze step was run before some pages were added)
+  const normalizedToCheck = toAdd.map(u => u.url_normalized).filter(Boolean) as string[]
+  if (normalizedToCheck.length > 0) {
+    const { data: alreadyInDb } = await supabase
+      .from('pages')
+      .select('url_normalized')
+      .eq('account_id', account_id)
+      .in('url_normalized', normalizedToCheck)
+    if (alreadyInDb && alreadyInDb.length > 0) {
+      const existingNorms = new Set(alreadyInDb.map(p => p.url_normalized))
+      const before = toAdd.length
+      toAdd = toAdd.filter(u => !u.url_normalized || !existingNorms.has(u.url_normalized))
+      if (toAdd.length === 0) return NextResponse.json({ inserted: 0, skipped: before })
+    }
+  }
 
   const { data: existing } = await supabase
     .from('pages')
@@ -105,10 +122,7 @@ export async function POST(request: Request) {
     }))
   }
 
-  const { error } = await supabase.from('pages').upsert(newPages, {
-    onConflict: 'account_id,url_normalized',
-    ignoreDuplicates: true,
-  })
+  const { error } = await supabase.from('pages').insert(newPages)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await logActivity(supabase, {
