@@ -52,7 +52,7 @@ function formatClicks(n: number): string {
 }
 
 export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, showDragIcon }: Props) {
-  const { selectedPageIds, expandedNodeIds, toggleExpand, openModal, openContextMenu } = useUiStore()
+  const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
