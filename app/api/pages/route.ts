@@ -17,15 +17,25 @@ export async function GET(request: Request) {
   const hasAccess = await verifyAccountAccess(supabase, user.id, accountId)
   if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data, error } = await supabase
-    .from('pages')
-    .select('*')
-    .eq('account_id', accountId)
-    .order('sort_order')
-    .limit(50000)
+  // Paginate to bypass Supabase PostgREST's 1000-row default cap
+  const PAGE_SIZE = 1000
+  const allPages: Page[] = []
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('account_id', accountId)
+      .order('sort_order')
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data || data.length === 0) break
+    allPages.push(...data)
+    if (data.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  return NextResponse.json(allPages)
 }
 
 export async function POST(request: Request) {

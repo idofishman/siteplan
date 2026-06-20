@@ -112,6 +112,34 @@ export async function POST(request: Request) {
   return NextResponse.json({ inserted: uniqueRows.length })
 }
 
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const accountId = searchParams.get('account_id')
+  if (!accountId) return NextResponse.json({ error: 'account_id required' }, { status: 400 })
+
+  const supabase = createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const hasAccess = await verifyAccountAccess(supabase, user.id, accountId)
+  if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const adminSupa = createServiceRoleClient()
+  const { error } = await adminSupa.from('gsc_clicks').delete().eq('account_id', accountId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).single()
+  await logActivity(supabase, {
+    account_id: accountId,
+    user_id: user.id,
+    user_name: profile?.display_name ?? user.id,
+    action: 'gsc_cleared',
+    details: {},
+  })
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const accountId = searchParams.get('account_id')
@@ -124,13 +152,22 @@ export async function GET(request: Request) {
   const hasAccess = await verifyAccountAccess(supabase, user.id, accountId)
   if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data, error } = await supabase
-    .from('gsc_clicks')
-    .select('*')
-    .eq('account_id', accountId)
-    .order('clicks', { ascending: false })
-    .limit(50000)
+  const PAGE_SIZE = 1000
+  const allRows: unknown[] = []
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('gsc_clicks')
+      .select('*')
+      .eq('account_id', accountId)
+      .order('clicks', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data || data.length === 0) break
+    allRows.push(...data)
+    if (data.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  return NextResponse.json(allRows)
 }

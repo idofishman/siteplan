@@ -91,7 +91,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         `}
         style={{
           paddingRight: `${depth * 20 + 12}px`,
-          ...(accentColor ? { borderRight: `3px solid ${accentColor}` } : { borderRight: '3px solid transparent' }),
+          ...(accentColor ? { borderRight: `4px solid ${accentColor}` } : { borderRight: '4px solid transparent' }),
         }}
       >
         {/* 1. Drag icon — visual affordance only; actual drag handle is on the outer wrapper */}
@@ -119,9 +119,14 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           </svg>
         </button>
 
-        {/* 3. Name */}
-        <span className="flex-1 text-sm text-slate-800 truncate min-w-0">
-          {searchQuery ? highlight(node.name, searchQuery) : node.name}
+        {/* 3. Name (with color dot if color is set) */}
+        <span className="flex-1 flex items-center gap-1.5 min-w-0">
+          {accentColor && (
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+          )}
+          <span className="text-sm text-slate-800 truncate min-w-0">
+            {searchQuery ? highlight(node.name, searchQuery) : node.name}
+          </span>
         </span>
 
         {/* 4. Descendant count — fixed slot, empty when zero */}

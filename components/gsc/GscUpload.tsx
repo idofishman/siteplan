@@ -12,7 +12,11 @@ const PERIODS = [
   { value: '1y', label: 'שנה' },
 ]
 
-export function GscUpload() {
+interface GscUploadProps {
+  onSuccess?: () => void
+}
+
+export function GscUpload({ onSuccess }: GscUploadProps) {
   const { activeAccount } = useAccountStore()
   const { loadGsc } = useTreeStore()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -40,6 +44,7 @@ export function GscUpload() {
     } else {
       setResult(data)
       await loadGsc(activeAccount.id)
+      onSuccess?.()
     }
     setUploading(false)
   }
