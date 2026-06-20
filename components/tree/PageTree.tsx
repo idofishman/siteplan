@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 import { Droppable, Draggable } from '@hello-pangea/dnd'
@@ -18,8 +18,36 @@ interface LevelProps {
   searchQuery?: string
 }
 
+// Empty droppable zone rendered beneath a collapsed node during drag
+// so the user can drop items into it to become children
+function CollapsedDropZone({ droppableId, depth }: { droppableId: string; depth: number }) {
+  return (
+    <Droppable droppableId={droppableId}>
+      {(p, s) => (
+        <div
+          ref={p.innerRef}
+          {...p.droppableProps}
+          className={`mx-1 rounded transition-all duration-150 ${
+            s.isDraggingOver
+              ? 'min-h-8 bg-blue-100 border border-dashed border-blue-400'
+              : 'min-h-[3px] opacity-40'
+          }`}
+          style={{ marginRight: `${depth * 20 + 8}px` }}
+        >
+          {s.isDraggingOver && (
+            <div className="flex items-center justify-center h-full text-xs text-blue-500 py-1">
+              שחרר כאן כדי להוסיף כתת-עמוד
+            </div>
+          )}
+          {p.placeholder}
+        </div>
+      )}
+    </Droppable>
+  )
+}
+
 function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, searchQuery }: LevelProps) {
-  const { expandedNodeIds } = useUiStore()
+  const { expandedNodeIds, isDragging } = useUiStore()
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const filteredNodes = visibleIds ? nodes.filter(n => visibleIds.has(n.id)) : nodes
 
@@ -46,7 +74,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
                       opacity: dragSnapshot.isDragging ? 0.85 : 1,
                     }}
                   >
-                    {/* Row: only this element is the drag handle */}
+                    {/* Row — only this element is the drag handle */}
                     <div
                       {...dragProvided.dragHandleProps}
                       style={{ userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
@@ -61,16 +89,20 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
                       />
                     </div>
 
-                    {/* Children rendered outside the drag handle so they don't trigger parent drag */}
-                    {hasChildren && isExpanded && (
-                      <DroppableLevel
-                        nodes={node.children}
-                        droppableId={node.id}
-                        depth={depth + 1}
-                        gscClicks={gscClicks}
-                        visibleIds={visibleIds}
-                        searchQuery={searchQuery}
-                      />
+                    {/* Children: full DroppableLevel when expanded; thin drop zone when collapsed during drag */}
+                    {hasChildren && (
+                      isExpanded ? (
+                        <DroppableLevel
+                          nodes={node.children}
+                          droppableId={node.id}
+                          depth={depth + 1}
+                          gscClicks={gscClicks}
+                          visibleIds={visibleIds}
+                          searchQuery={searchQuery}
+                        />
+                      ) : (isDragging && !isSearching ? (
+                        <CollapsedDropZone droppableId={node.id} depth={depth + 1} />
+                      ) : null)
                     )}
                   </div>
                 )}

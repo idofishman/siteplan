@@ -183,6 +183,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <ImportPreviewModal />
       <PageHistoryModal />
       <ContextMenu />
+
+      <footer className="shrink-0 border-t border-slate-100 bg-white px-6 py-2 flex items-center justify-center">
+        <p className="text-xs text-slate-400">
+          © {new Date().getFullYear()} כל הזכויות שמורות ל{' '}
+          <a
+            href="https://www.whiteweb.co.il"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors"
+          >
+            White Web Worx
+          </a>
+          {' '}— Your Search &amp; Generative Engine Optimization Partner
+        </p>
+      </footer>
     </div>
   )
 }
