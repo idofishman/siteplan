@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const formData = await request.formData()
   const accountId = formData.get('account_id') as string
   const file = formData.get('file') as File | null
-  const period = (formData.get('period') as string | null) ?? null
+  const period = (formData.get('period') as string | null) ?? null // stored in activity log only
 
   if (!accountId || !file) return NextResponse.json({ error: 'account_id and file required' }, { status: 400 })
 
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
   if (deleteErr) return NextResponse.json({ error: deleteErr.message }, { status: 500 })
 
   if (uniqueRows.length > 0) {
-    const insertRows = uniqueRows.map(r => ({ ...r, account_id: accountId, period, uploaded_by: user.id }))
+    const insertRows = uniqueRows.map(r => ({ ...r, account_id: accountId, uploaded_by: user.id }))
     const { error: insertErr } = await adminSupa.from('gsc_clicks').insert(insertRows)
     if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
