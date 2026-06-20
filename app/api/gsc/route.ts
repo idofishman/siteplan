@@ -55,12 +55,17 @@ export async function POST(request: Request) {
     const normalized = normalizeUrl(urlOriginal, account?.domain ?? undefined)
     if (!normalized) continue
 
+    const ctrRaw = col(parts, 'ctr').replace('%', '')
+    const ctrVal = parseFloat(ctrRaw)
+    // GSC exports CTR as percentage string ("28.15%") — store as decimal (0–1)
+    const ctr = isNaN(ctrVal) ? null : ctrVal > 1 ? ctrVal / 100 : ctrVal
+
     rows.push({
       url_original: urlOriginal,
       url_normalized: normalized,
       clicks: parseInt(col(parts, 'clicks'), 10) || 0,
       impressions: parseInt(col(parts, 'impressions'), 10) || null,
-      ctr: parseFloat(col(parts, 'ctr')) || null,
+      ctr,
       position: parseFloat(col(parts, 'position')) || null,
     })
   }
