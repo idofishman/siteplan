@@ -132,6 +132,7 @@ export interface GscClick {
   ctr: number | null
   position: number | null
   uploaded_at: string
+  period: string | null
 }
 
 // ─── Operation payloads ──────────────────────────────────────────────────────

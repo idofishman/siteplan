@@ -1,7 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
-import { verifyAccountAccess, requireSystemAdmin } from '@/lib/utils/auth'
+import { verifyAccountAccess } from '@/lib/utils/auth'
 import { normalizeUrl } from '@/lib/utils/url'
 import { logActivity } from '@/lib/utils/activity'
 
@@ -10,14 +10,15 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdmin = await requireSystemAdmin(supabase, user.id)
-  if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
   const formData = await request.formData()
   const accountId = formData.get('account_id') as string
   const file = formData.get('file') as File | null
+  const period = (formData.get('period') as string | null) ?? null
 
   if (!accountId || !file) return NextResponse.json({ error: 'account_id and file required' }, { status: 400 })
+
+  const hasAccess = await verifyAccountAccess(supabase, user.id, accountId)
+  if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Fetch account domain for URL normalization
   const { data: account } = await supabase
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
   if (deleteErr) return NextResponse.json({ error: deleteErr.message }, { status: 500 })
 
   if (rows.length > 0) {
-    const insertRows = rows.map(r => ({ ...r, account_id: accountId, uploaded_by: user.id }))
+    const insertRows = rows.map(r => ({ ...r, account_id: accountId, period, uploaded_by: user.id }))
     const { error: insertErr } = await adminSupa.from('gsc_clicks').insert(insertRows)
     if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
     user_id: user.id,
     user_name: profile?.display_name ?? user.id,
     action: 'gsc_uploaded',
-    details: { file_name: file.name, record_count: rows.length },
+    details: { file_name: file.name, record_count: rows.length, period },
   })
 
   return NextResponse.json({ inserted: rows.length })

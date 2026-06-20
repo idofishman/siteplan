@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useAccountStore } from '@/stores/accountStore'
-import { useAuth } from '@/components/auth/AuthProvider'
 import { GscUpload } from '@/components/gsc/GscUpload'
 import { MissingUrlsTable } from '@/components/gsc/MissingUrlsTable'
 import { useTreeStore } from '@/stores/treeStore'
@@ -10,17 +9,9 @@ import type { GscClick } from '@/types'
 
 export default function GscPage() {
   const { activeAccount } = useAccountStore()
-  const { user } = useAuth()
-  const { pages, loadPages, loadGsc, gscClicks } = useTreeStore()
+  const { pages, loadPages } = useTreeStore()
   const [gscData, setGscData] = useState<GscClick[]>([])
   const [loadingGsc, setLoadingGsc] = useState(false)
-
-  // We don't know if user is admin from this component easily, so we check profile from /api/me
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/me').then(r => r.json()).then(p => setIsAdmin(p.role === 'admin'))
-  }, [])
 
   useEffect(() => {
     if (!activeAccount) return
@@ -33,7 +24,6 @@ export default function GscPage() {
 
   if (!activeAccount) return null
 
-  // GSC click summary stats
   const totalClicks = gscData.reduce((s, g) => s + g.clicks, 0)
   const matched = gscData.filter(g => pages.some(p => p.url_normalized === g.url_normalized)).length
 
@@ -50,10 +40,7 @@ export default function GscPage() {
         )}
       </div>
 
-      {isAdmin && <GscUpload />}
-      {!isAdmin && gscData.length === 0 && (
-        <p className="text-slate-400 text-sm text-center py-12">אין נתוני GSC עדיין. פנה למנהל להעלאת קובץ.</p>
-      )}
+      <GscUpload />
 
       {loadingGsc ? (
         <div className="flex items-center justify-center py-8">
