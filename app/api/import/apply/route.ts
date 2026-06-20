@@ -48,23 +48,53 @@ export async function POST(request: Request) {
       if (u.temp_id) idMap.set(u.temp_id, crypto.randomUUID())
     }
 
-    newPages = toAdd.map((u, i) => ({
-      id: u.temp_id ? idMap.get(u.temp_id) : undefined,
-      account_id,
-      parent_id: u.parent_temp_id ? (idMap.get(u.parent_temp_id) ?? null) : null,
+    // Find homepage id: prefer one being imported in this batch, then fall back to DB
+    let homepageDbId: string | null = null
+    const homepageInBatch = toAdd.find(u => u.template === 'homepage' && !u.parent_temp_id)
+    if (homepageInBatch?.temp_id) {
+      homepageDbId = idMap.get(homepageInBatch.temp_id) ?? null
+    } else {
+      const { data: hp } = await supabase
+        .from('pages').select('id')
+        .eq('account_id', account_id).eq('template', 'homepage')
+        .is('parent_id', null).limit(1).single()
+      homepageDbId = hp?.id ?? null
+    }
+
+    newPages = toAdd.map((u, i) => {
+      // Resolve parent_id from temp id map, or fall back to homepage for root-level non-homepage pages
+      let parentId: string | null = null
+      if (u.parent_temp_id) {
+        parentId = idMap.get(u.parent_temp_id) ?? null
+      } else if (u.template !== 'homepage' && homepageDbId) {
+        parentId = homepageDbId
+      }
+      return ({
+        id: u.temp_id ? idMap.get(u.temp_id) : undefined,
+        account_id,
+        parent_id: parentId,
       name: u.name?.trim() || deriveNameFromUrl(u.url),
-      url: u.url || null,
-      url_normalized: u.url_normalized || null,
-      color: u.color ?? null,
-      template: u.template ?? null,
-      status: u.status ?? 'existing',
-      sort_order: baseSortOrder + i,
-      created_by: user.id,
-      updated_by: user.id,
-    }))
+        url: u.url || null,
+        url_normalized: u.url_normalized || null,
+        color: u.color ?? null,
+        template: u.template ?? null,
+        status: u.status ?? 'existing',
+        sort_order: baseSortOrder + i,
+        created_by: user.id,
+        updated_by: user.id,
+      })
+    })
   } else {
+    // For flat imports, find homepage and parent everything under it
+    const { data: hp } = await supabase
+      .from('pages').select('id')
+      .eq('account_id', account_id).eq('template', 'homepage')
+      .is('parent_id', null).limit(1).single()
+    const flatHomepageId = hp?.id ?? null
+
     newPages = toAdd.map((u, i) => ({
       account_id,
+      parent_id: flatHomepageId,
       name: u.name?.trim() || deriveNameFromUrl(u.url),
       url: u.url || null,
       url_normalized: u.url_normalized || null,

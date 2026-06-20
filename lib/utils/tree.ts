@@ -26,6 +26,18 @@ export function buildTree(pages: Page[]): PageNode[] {
   }
   sortNodes(roots)
 
+  // Enforce single root: if a homepage exists at root level, absorb all
+  // other root-level pages as its children (covers orphaned / imported pages
+  // whose parent_id is null but should live under the homepage).
+  const homepageIdx = roots.findIndex(n => n.template === 'homepage')
+  if (homepageIdx !== -1 && roots.length > 1) {
+    const homepage = roots[homepageIdx]
+    const others = roots.filter((_, i) => i !== homepageIdx)
+    homepage.children.push(...others)
+    sortNodes(homepage.children)
+    return [homepage]
+  }
+
   return roots
 }
 

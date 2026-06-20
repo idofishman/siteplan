@@ -49,9 +49,23 @@ export async function POST(request: Request) {
 
   const url_normalized = url ? normalizeUrl(url, account?.domain ?? undefined) : null
 
+  // Auto-parent to homepage when no explicit parent given and this isn't the homepage itself
+  let resolvedParentId: string | null = parent_id ?? null
+  if (!resolvedParentId && template !== 'homepage') {
+    const { data: hp } = await supabase
+      .from('pages')
+      .select('id')
+      .eq('account_id', account_id)
+      .eq('template', 'homepage')
+      .is('parent_id', null)
+      .limit(1)
+      .single()
+    if (hp) resolvedParentId = hp.id
+  }
+
   const row: Partial<Page> & { account_id: string; created_by: string; updated_by: string } = {
     account_id,
-    parent_id: parent_id ?? null,
+    parent_id: resolvedParentId,
     name,
     url: url ?? null,
     url_normalized,
