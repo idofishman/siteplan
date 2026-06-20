@@ -17,10 +17,8 @@ export function MoveConfirmModal() {
     pageName: string
     newParentId: string | null
     newSortOrder: number
-    isSameParent?: boolean
   } | null
 
-  // Sync local parent with payload whenever modal opens
   useEffect(() => {
     if (open && payload) setParentId(payload.newParentId)
     if (!open) setParentId(null)
@@ -30,8 +28,6 @@ export function MoveConfirmModal() {
 
   const selectedParentNode = parentId ? findNode(tree, parentId) : null
   const parentLabel = selectedParentNode ? selectedParentNode.name : 'שורש הדפים'
-  const parentChanged = parentId !== payload.newParentId
-  const isSameParent = !parentChanged && payload.isSameParent
 
   async function handleConfirm() {
     if (!payload) return
@@ -41,7 +37,6 @@ export function MoveConfirmModal() {
     setMoving(false)
   }
 
-  // Pages available as parent — exclude the page being moved and its descendants
   function isDescendant(nodeId: string, ancestorId: string): boolean {
     const node = findNode(tree, ancestorId)
     if (!node) return false
@@ -57,18 +52,12 @@ export function MoveConfirmModal() {
         className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-slate-800">
-          {isSameParent ? 'שינוי סדר' : 'העברת עמוד'}
-        </h2>
+        <h2 className="text-lg font-bold text-slate-800">העברת עמוד</h2>
 
         <p className="text-sm text-slate-600">
-          {isSameParent
-            ? <>לשנות את מיקומו של <strong>{payload.pageName}</strong> בתפריט?</>
-            : <>להעביר את <strong>{payload.pageName}</strong> אל <strong>{parentLabel}</strong>?</>
-          }
+          להעביר את <strong>{payload.pageName}</strong> אל <strong>{parentLabel}</strong>?
         </p>
 
-        {/* Parent picker — lets the user correct a mis-drop */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-slate-500">עמוד הורה</label>
           <select
@@ -81,9 +70,6 @@ export function MoveConfirmModal() {
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
-          {parentChanged && (
-            <p className="text-xs text-amber-600">שונה מהמיקום שנגרר — הורה: {parentLabel}</p>
-          )}
         </div>
 
         <div className="flex gap-2">
@@ -92,7 +78,7 @@ export function MoveConfirmModal() {
             disabled={moving}
             className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
-            {moving ? 'שומר...' : isSameParent ? 'שמור סדר' : 'העבר'}
+            {moving ? 'שומר...' : 'העבר'}
           </button>
           <button onClick={closeModal} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">
             ביטול

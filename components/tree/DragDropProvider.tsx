@@ -32,13 +32,20 @@ export function DragDropProvider({ children }: Props) {
     else if (!after)         newSortOrder = before.sort_order + 1
     else                     newSortOrder = (before.sort_order + after.sort_order) / 2
 
-    openModal('movePage', {
-      pageId: draggableId,
-      pageName: node.name,
-      newParentId,
-      newSortOrder,
-      isSameParent: source.droppableId === destination.droppableId,
-    })
+    const isSameParent = source.droppableId === destination.droppableId
+
+    if (isSameParent) {
+      // Same parent — apply immediately with no confirmation needed
+      useTreeStore.getState().movePage(draggableId, newParentId, newSortOrder)
+    } else {
+      // Cross-parent move — open modal so user can confirm / correct the destination
+      openModal('movePage', {
+        pageId: draggableId,
+        pageName: node.name,
+        newParentId,
+        newSortOrder,
+      })
+    }
   }
 
   return (
