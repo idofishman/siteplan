@@ -94,8 +94,18 @@ export default function AdminUsersPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     })
-    if (res.ok) alert(`הזמנה נשלחה מחדש אל ${email ?? id}`)
-    else alert('שגיאה בשליחת הזמנה')
+    if (res.ok) {
+      const { link } = await res.json()
+      if (link) {
+        await navigator.clipboard.writeText(link)
+        alert(`לינק הזמנה עבור ${email ?? id} הועתק ללוח — שלח אותו למשתמש`)
+      } else {
+        alert('לא ניתן לייצר לינק הזמנה')
+      }
+    } else {
+      const { error } = await res.json().catch(() => ({}))
+      alert(`שגיאה: ${error ?? 'שגיאה בשליחת הזמנה'}`)
+    }
   }
 
   async function handleDelete(id: string, name: string) {
@@ -540,7 +550,13 @@ function EditUserModal({
                   const res = await fetch(`/api/admin/users/${user.id}?action=resend-invite`, {
                     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
                   })
-                  setResendMsg(res.ok ? 'הזמנה נשלחה מחדש ✓' : 'שגיאה בשליחה')
+                  if (res.ok) {
+                    const { link } = await res.json()
+                    if (link) { await navigator.clipboard.writeText(link); setResendMsg('לינק הועתק ללוח ✓') }
+                    else setResendMsg('לא ניתן לייצר לינק')
+                  } else {
+                    setResendMsg('שגיאה בייצור לינק')
+                  }
                   setResending(false)
                 }}
                 disabled={resending}

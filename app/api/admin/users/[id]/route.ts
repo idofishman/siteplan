@@ -34,11 +34,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
       ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-    const { error } = await adminSupa.auth.admin.inviteUserByEmail(authUser.user.email, {
-      redirectTo: `${siteUrl}/app`,
+    // Use generateLink instead of inviteUserByEmail to avoid email rate-limits.
+    // Returns a one-time invite URL the admin copies and sends manually.
+    const { data, error } = await adminSupa.auth.admin.generateLink({
+      type: 'invite',
+      email: authUser.user.email,
+      options: { redirectTo: `${siteUrl}/app` },
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ link: data?.properties?.action_link ?? null })
   }
 
   if (action === 'toggle-status') {
