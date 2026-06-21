@@ -578,7 +578,7 @@ function EditUserModal({
               disabled={resetting}
               className="text-sm px-4 py-1.5 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
             >
-              {resetting ? 'מייצר...' : 'שלח לינק איפוס סיסמה'}
+              {resetting ? 'מייצר...' : 'צור לינק לאיפוס סיסמה'}
             </button>
           </div>
 

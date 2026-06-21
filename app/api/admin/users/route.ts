@@ -8,8 +8,40 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdmin = await requireAdmin(supabase, user.id)
-  if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { data: myProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (!myProfile || (myProfile.role !== 'system_admin' && myProfile.role !== 'admin')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const isSuperAdmin = myProfile.role === 'system_admin'
+
+  // For regular admin: find the accounts they belong to, then scope the user list to those accounts only
+  let allowedUserIds: Set<string> | null = null
+  if (!isSuperAdmin) {
+    const { data: myAccounts } = await supabase
+      .from('user_accounts')
+      .select('account_id')
+      .eq('user_id', user.id)
+    const myAccountIds = (myAccounts ?? []).map(r => r.account_id)
+
+    if (myAccountIds.length === 0) {
+      // Admin with no accounts — return empty list
+      return NextResponse.json([])
+    }
+
+    const { data: accountMembers } = await supabase
+      .from('user_accounts')
+      .select('user_id')
+      .in('account_id', myAccountIds)
+    allowedUserIds = new Set((accountMembers ?? []).map(r => r.user_id))
+    // Always include self
+    allowedUserIds.add(user.id)
+  }
 
   const { data, error } = await supabase
     .from('profiles')
@@ -44,7 +76,11 @@ export async function GET() {
     accountsMap.get(ua.user_id)!.push(ua.account_id)
   }
 
-  const result = (data ?? []).map(p => ({
+  const profiles = allowedUserIds
+    ? (data ?? []).filter(p => allowedUserIds!.has(p.id))
+    : (data ?? [])
+
+  const result = profiles.map(p => ({
     ...p,
     email: authMap.get(p.id)?.email ?? null,
     is_banned: authMap.get(p.id)?.is_banned ?? false,
