@@ -1,13 +1,13 @@
-import { createServerClient } from '@/lib/supabase/server'
+﻿import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { requireSystemAdmin } from '@/lib/utils/auth'
+import { requireAdmin } from '@/lib/utils/auth'
 
 export async function GET() {
   const supabase = createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdmin = await requireSystemAdmin(supabase, user.id)
+  const isAdmin = await requireAdmin(supabase, user.id)
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data, error } = await supabase
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdmin = await requireSystemAdmin(supabase, user.id)
+  const isAdmin = await requireAdmin(supabase, user.id)
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { name, domain, slug: rawSlug } = await request.json()
@@ -38,3 +38,4 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data, { status: 201 })
 }
+

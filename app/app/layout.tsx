@@ -116,7 +116,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {profile.display_name}
             </Link>
           )}
-          {profile?.role === 'system_admin' && (
+          {(profile?.role === 'system_admin' || profile?.role === 'admin') && (
             <a href="/admin" className="text-sm text-slate-300 hover:text-white transition-colors">
               ניהול
             </a>

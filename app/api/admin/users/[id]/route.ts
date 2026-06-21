@@ -1,7 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
-import { requireSystemAdmin } from '@/lib/utils/auth'
+import { requireAdmin } from '@/lib/utils/auth'
 
 // Extract token_hash from Supabase's action_link and build our own confirm URL.
 // This bypasses Supabase's redirect allowlist check entirely — our page handles
@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdmin = await requireSystemAdmin(supabase, user.id)
+  const isAdmin = await requireAdmin(supabase, user.id)
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const action = new URL(request.url).searchParams.get('action')
@@ -108,7 +108,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdmin = await requireSystemAdmin(supabase, user.id)
+  const isAdmin = await requireAdmin(supabase, user.id)
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   if (params.id === user.id) return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 })

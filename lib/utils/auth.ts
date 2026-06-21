@@ -59,3 +59,17 @@ export async function requireSystemAdmin(
 
   return profile?.role === 'system_admin'
 }
+
+/** Allows both system_admin and admin roles. */
+export async function requireAdmin(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<boolean> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+
+  return profile?.role === 'system_admin' || profile?.role === 'admin'
+}
