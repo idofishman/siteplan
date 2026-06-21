@@ -28,6 +28,7 @@ export async function GET() {
       {
         email: u.email ?? null,
         is_banned: !!(u.banned_until && new Date(u.banned_until) > now),
+        is_confirmed: !!(u.email_confirmed_at || u.confirmed_at),
       },
     ]) ?? []
   )
@@ -47,6 +48,7 @@ export async function GET() {
     ...p,
     email: authMap.get(p.id)?.email ?? null,
     is_banned: authMap.get(p.id)?.is_banned ?? false,
+    is_confirmed: authMap.get(p.id)?.is_confirmed ?? true,
     account_ids: accountsMap.get(p.id) ?? [],
   }))
 

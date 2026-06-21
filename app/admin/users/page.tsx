@@ -10,6 +10,7 @@ interface UserRow {
   email: string | null
   created_at: string
   is_banned: boolean
+  is_confirmed: boolean
   account_ids: string[]
 }
 
@@ -85,6 +86,16 @@ export default function AdminUsersPage() {
     } else {
       alert('שגיאה בייצור לינק איפוס')
     }
+  }
+
+  async function handleResendInvite(id: string, email: string | null) {
+    const res = await fetch(`/api/admin/users/${id}?action=resend-invite`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    if (res.ok) alert(`הזמנה נשלחה מחדש אל ${email ?? id}`)
+    else alert('שגיאה בשליחת הזמנה')
   }
 
   async function handleDelete(id: string, name: string) {
@@ -166,7 +177,12 @@ export default function AdminUsersPage() {
                       onSave={name => handleNameSave(u.id, name)}
                     />
                   </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs" dir="ltr">{u.email ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-500 text-xs" dir="ltr">
+                    <span>{u.email ?? '—'}</span>
+                    {!u.is_confirmed && (
+                      <span className="mr-2 text-amber-600 bg-amber-50 border border-amber-200 text-[10px] px-1.5 py-0.5 rounded-full font-medium">ממתין לאישור</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <select
                       value={u.role}
@@ -203,6 +219,14 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3 text-end">
                     <div className="flex items-center justify-end gap-2">
+                      {!u.is_confirmed && (
+                        <button
+                          onClick={() => handleResendInvite(u.id, u.email)}
+                          className="text-xs text-amber-600 hover:text-amber-800 font-medium"
+                        >
+                          שלח שוב
+                        </button>
+                      )}
                       <button
                         onClick={() => setEditUser(u)}
                         className="text-xs text-blue-600 hover:text-blue-800 font-medium"
@@ -354,6 +378,8 @@ function EditUserModal({
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set(user.account_ids))
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendMsg, setResendMsg] = useState<string | null>(null)
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [localBanned, setLocalBanned] = useState(user.is_banned)
   const [error, setError] = useState<string | null>(null)
@@ -500,6 +526,30 @@ function EditUserModal({
               {togglingStatus ? '...' : localBanned ? 'בטל חסימה' : 'חסום משתמש'}
             </button>
           </div>
+
+          {/* Resend invite — only for unconfirmed users */}
+          {!user.is_confirmed && (
+            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <div>
+                <p className="text-xs font-medium text-amber-700">ממתין לאישור הזמנה</p>
+                {resendMsg && <p className="text-xs text-green-600 mt-0.5">{resendMsg}</p>}
+              </div>
+              <button
+                onClick={async () => {
+                  setResending(true); setResendMsg(null)
+                  const res = await fetch(`/api/admin/users/${user.id}?action=resend-invite`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+                  })
+                  setResendMsg(res.ok ? 'הזמנה נשלחה מחדש ✓' : 'שגיאה בשליחה')
+                  setResending(false)
+                }}
+                disabled={resending}
+                className="text-sm px-4 py-1.5 rounded-lg font-medium bg-amber-100 hover:bg-amber-200 text-amber-700 transition-colors"
+              >
+                {resending ? 'שולח...' : 'שלח הזמנה מחדש'}
+              </button>
+            </div>
+          )}
 
           {/* Reset password */}
           <div className="flex items-center justify-between">
