@@ -3,6 +3,26 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { requireSystemAdmin } from '@/lib/utils/auth'
 
+// Extract token_hash from Supabase's action_link and build our own confirm URL.
+// This bypasses Supabase's redirect allowlist check entirely — our page handles
+// the final redirect after calling verifyOtp().
+function buildConfirmUrl(actionLink: string | null | undefined, type: string): string | null {
+  if (!actionLink) return null
+  try {
+    const parsed = new URL(actionLink)
+    const tokenHash = parsed.searchParams.get('token') ?? parsed.searchParams.get('token_hash')
+    if (!tokenHash) return null
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    const url = new URL(`${siteUrl}/auth/confirm`)
+    url.searchParams.set('token_hash', tokenHash)
+    url.searchParams.set('type', type)
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const supabase = createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -19,15 +39,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (getUserErr || !authUser?.user?.email) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
     const { data, error } = await adminSupa.auth.admin.generateLink({
       type: 'recovery',
       email: authUser.user.email,
-      options: { redirectTo: `${siteUrl}/app` },
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ link: data?.properties?.action_link ?? null })
+    const link = buildConfirmUrl(data?.properties?.action_link, 'recovery')
+    return NextResponse.json({ link })
   }
 
   if (action === 'resend-invite') {
@@ -35,17 +53,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (getUserErr || !authUser?.user?.email) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-    // Use generateLink instead of inviteUserByEmail to avoid email rate-limits.
-    // Returns a one-time invite URL the admin copies and sends manually.
     const { data, error } = await adminSupa.auth.admin.generateLink({
       type: 'invite',
       email: authUser.user.email,
-      options: { redirectTo: `${siteUrl}/app` },
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ link: data?.properties?.action_link ?? null })
+    const link = buildConfirmUrl(data?.properties?.action_link, 'invite')
+    return NextResponse.json({ link })
   }
 
   if (action === 'toggle-status') {

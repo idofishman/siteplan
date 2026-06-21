@@ -72,18 +72,20 @@ export async function POST(request: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
-  // Use generateLink to avoid Supabase email rate limits.
-  // The admin copies the returned link and sends it to the user manually.
   const { data, error } = await adminSupa.auth.admin.generateLink({
     type: 'invite',
     email,
-    options: { redirectTo: `${siteUrl}/app` },
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const userId = data?.user?.id
-  const link = data?.properties?.action_link ?? null
+  // Build our own confirm URL so redirect never goes through Supabase's allowlist check
+  const rawLink = data?.properties?.action_link ?? null
+  const token = rawLink ? new URL(rawLink).searchParams.get('token') : null
+  const link = token
+    ? (() => { const u = new URL(`${siteUrl}/auth/confirm`); u.searchParams.set('token_hash', token); u.searchParams.set('type', 'invite'); return u.toString() })()
+    : null
 
   // Ensure profile row exists
   if (userId) {
