@@ -640,6 +640,11 @@ function InviteForm({ onClose, onInvited }: { onClose: () => void; onInvited: ()
       body: JSON.stringify({ email, display_name: displayName, role }),
     })
     if (res.ok) {
+      const data = await res.json()
+      if (data.link) {
+        await navigator.clipboard.writeText(data.link)
+        alert(`לינק הזמנה עבור ${email} הועתק ללוח — שלח אותו למשתמש`)
+      }
       onInvited()
     } else {
       const data = await res.json()

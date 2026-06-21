@@ -72,26 +72,29 @@ export async function POST(request: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
-  const { data, error } = await adminSupa.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteUrl}/app`,
-    data: {
-      display_name: display_name ?? '',
-      role: role ?? 'user',
-    },
+  // Use generateLink to avoid Supabase email rate limits.
+  // The admin copies the returned link and sends it to the user manually.
+  const { data, error } = await adminSupa.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { redirectTo: `${siteUrl}/app` },
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Insert profile row if not already created by trigger
-  if (data?.user?.id) {
-    await supabase
+  const userId = data?.user?.id
+  const link = data?.properties?.action_link ?? null
+
+  // Ensure profile row exists
+  if (userId) {
+    await adminSupa
       .from('profiles')
       .upsert({
-        id: data.user.id,
+        id: userId,
         display_name: display_name ?? '',
         role: role ?? 'user',
       }, { onConflict: 'id', ignoreDuplicates: true })
   }
 
-  return NextResponse.json({ ok: true, id: data?.user?.id })
+  return NextResponse.json({ ok: true, id: userId, link })
 }
