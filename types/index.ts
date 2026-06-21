@@ -1,6 +1,6 @@
 // ─── Primitive types ────────────────────────────────────────────────────────
 
-export type UserRole = 'system_admin' | 'user'
+export type UserRole = 'system_admin' | 'admin' | 'user'
 
 export type PageStatus =
   | 'planned'
