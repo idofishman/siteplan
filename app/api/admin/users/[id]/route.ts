@@ -19,9 +19,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (getUserErr || !authUser?.user?.email) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
     const { data, error } = await adminSupa.auth.admin.generateLink({
       type: 'recovery',
       email: authUser.user.email,
+      options: { redirectTo: `${siteUrl}/app` },
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ link: data?.properties?.action_link ?? null })
