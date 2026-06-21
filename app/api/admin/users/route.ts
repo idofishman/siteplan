@@ -67,7 +67,11 @@ export async function POST(request: Request) {
   if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 })
 
   const adminSupa = createServiceRoleClient()
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
   const { data, error } = await adminSupa.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${siteUrl}/app`,
     data: {
       display_name: display_name ?? '',
       role: role ?? 'user',
