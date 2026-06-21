@@ -98,7 +98,7 @@ export default function AdminUsersPage() {
       const { link } = await res.json()
       if (link) {
         await navigator.clipboard.writeText(link)
-        alert(`לינק הזמנה עבור ${email ?? id} הועתק ללוח — שלח אותו למשתמש`)
+        alert(`קישור הזמנה עבור ${email ?? id} הועתק ללוח`)
       } else {
         alert('לא ניתן לייצר לינק הזמנה')
       }
@@ -234,7 +234,7 @@ export default function AdminUsersPage() {
                           onClick={() => handleResendInvite(u.id, u.email)}
                           className="text-xs text-amber-600 hover:text-amber-800 font-medium"
                         >
-                          שלח שוב
+                          העתק קישור
                         </button>
                       )}
                       <button
@@ -552,7 +552,7 @@ function EditUserModal({
                   })
                   if (res.ok) {
                     const { link } = await res.json()
-                    if (link) { await navigator.clipboard.writeText(link); setResendMsg('לינק הועתק ללוח ✓') }
+                    if (link) { await navigator.clipboard.writeText(link); setResendMsg('קישור הועתק ללוח ✓') }
                     else setResendMsg('לא ניתן לייצר לינק')
                   } else {
                     setResendMsg('שגיאה בייצור לינק')
@@ -562,7 +562,7 @@ function EditUserModal({
                 disabled={resending}
                 className="text-sm px-4 py-1.5 rounded-lg font-medium bg-amber-100 hover:bg-amber-200 text-amber-700 transition-colors"
               >
-                {resending ? 'שולח...' : 'שלח הזמנה מחדש'}
+                {resending ? 'מייצר קישור...' : 'העתק קישור הזמנה'}
               </button>
             </div>
           )}
@@ -643,7 +643,7 @@ function InviteForm({ onClose, onInvited }: { onClose: () => void; onInvited: ()
       const data = await res.json()
       if (data.link) {
         await navigator.clipboard.writeText(data.link)
-        alert(`לינק הזמנה עבור ${email} הועתק ללוח — שלח אותו למשתמש`)
+        alert(`קישור הזמנה עבור ${email} הועתק ללוח`)
       }
       onInvited()
     } else {
@@ -697,7 +697,7 @@ function InviteForm({ onClose, onInvited }: { onClose: () => void; onInvited: ()
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
           >
-            {loading ? 'שולח...' : 'שלח הזמנה'}
+            {loading ? 'מייצר קישור...' : 'צור קישור הזמנה'}
           </button>
           <button type="button" onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5">
             ביטול
