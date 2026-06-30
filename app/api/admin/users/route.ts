@@ -76,6 +76,16 @@ export async function GET() {
     accountsMap.get(ua.user_id)!.push(ua.account_id)
   }
 
+  // Get most recent presence (last_seen) per user across all accounts
+  const { data: presenceRows } = await adminSupa
+    .from('presence')
+    .select('user_id, last_seen')
+  const lastSeenMap = new Map<string, string>()
+  for (const row of presenceRows ?? []) {
+    const existing = lastSeenMap.get(row.user_id)
+    if (!existing || row.last_seen > existing) lastSeenMap.set(row.user_id, row.last_seen)
+  }
+
   const profiles = allowedUserIds
     ? (data ?? []).filter(p => allowedUserIds!.has(p.id))
     : (data ?? [])
@@ -86,6 +96,7 @@ export async function GET() {
     is_banned: authMap.get(p.id)?.is_banned ?? false,
     is_confirmed: authMap.get(p.id)?.is_confirmed ?? true,
     account_ids: accountsMap.get(p.id) ?? [],
+    last_seen: lastSeenMap.get(p.id) ?? null,
   }))
 
   return NextResponse.json(result)

@@ -2,9 +2,23 @@
 
 import React from 'react'
 import { useUiStore } from '@/stores/uiStore'
+import { useTreeStore } from '@/stores/treeStore'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { PageNodeMenu } from './PageNodeMenu'
 import type { PageNode as PageNodeType } from '@/types'
+
+function timeAgoHe(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 2) return 'עכשיו'
+  if (mins < 60) return `לפני ${mins} דק׳`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `לפני ${hrs} שע׳`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `לפני ${days} ימים`
+  if (days < 30) return `לפני ${Math.floor(days / 7)} שב׳`
+  return new Date(iso).toLocaleDateString('he-IL')
+}
 
 interface Props {
   node: PageNodeType
@@ -54,6 +68,7 @@ function formatClicks(n: number): string {
 
 export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, showDragIcon }: Props) {
   const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
+  const { profilesMap } = useTreeStore()
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
@@ -124,11 +139,24 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           {accentColor && (
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
           )}
-          <span className={`text-sm truncate min-w-0 ${node.is_deleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+          <span
+            className={`text-sm truncate min-w-0 ${node.is_deleted ? 'line-through text-slate-400' : 'text-slate-800'}`}
+            title={node.updated_at
+              ? `עודכן ${timeAgoHe(node.updated_at)}${node.updated_by && profilesMap[node.updated_by] ? ` ע"י ${profilesMap[node.updated_by]}` : ''}`
+              : undefined}
+          >
             {searchQuery ? highlight(node.name, searchQuery) : node.name}
           </span>
           {node.is_deleted && (
             <span className="text-[10px] text-red-400 font-medium shrink-0">מחוק</span>
+          )}
+          {/* Last-edited chip — shown on hover via group */}
+          {!node.is_deleted && node.updated_at && (
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+              {node.updated_by && profilesMap[node.updated_by]
+                ? `${profilesMap[node.updated_by]} · ${timeAgoHe(node.updated_at)}`
+                : timeAgoHe(node.updated_at)}
+            </span>
           )}
         </span>
 

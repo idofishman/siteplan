@@ -12,6 +12,22 @@ interface UserRow {
   is_banned: boolean
   is_confirmed: boolean
   account_ids: string[]
+  last_seen: string | null
+}
+
+function formatRelativeHe(iso: string | null): string {
+  if (!iso) return 'לא ידוע'
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 2) return 'עכשיו'
+  if (mins < 60) return `לפני ${mins} דקות`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `לפני ${hrs} שעות`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `לפני ${days} ימים`
+  if (days < 30) return `לפני ${Math.floor(days / 7)} שבועות`
+  if (days < 365) return `לפני ${Math.floor(days / 30)} חודשים`
+  return `לפני ${Math.floor(days / 365)} שנים`
 }
 
 const ROLES: { value: string; label: string }[] = [
@@ -171,6 +187,7 @@ export default function AdminUsersPage() {
               <th className="text-start px-4 py-3 text-xs font-medium text-slate-500">אימייל</th>
               <th className="text-start px-4 py-3 text-xs font-medium text-slate-500">תפקיד</th>
               <th className="text-start px-4 py-3 text-xs font-medium text-slate-500">סטטוס</th>
+              <th className="text-start px-4 py-3 text-xs font-medium text-slate-500">כניסה אחרונה</th>
               <th className="text-start px-4 py-3 text-xs font-medium text-slate-500">חשבונות</th>
               <th className="px-4 py-3" />
             </tr>
@@ -215,6 +232,9 @@ export default function AdminUsersPage() {
                     >
                       {u.is_banned ? 'חסום' : 'פעיל'}
                     </button>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-400" title={u.last_seen ? new Date(u.last_seen).toLocaleString('he-IL') : ''}>
+                    {formatRelativeHe(u.last_seen)}
                   </td>
                   <td className="px-4 py-3">
                     <button
