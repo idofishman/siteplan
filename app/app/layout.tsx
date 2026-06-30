@@ -18,6 +18,25 @@ import { signOut } from '@/app/login/actions'
 import type { Profile } from '@/types'
 import pkg from '../../package.json'
 
+function ShowDeletedToggle() {
+  const { showDeleted, setShowDeleted, pages } = useTreeStore()
+  const deletedCount = pages.filter(p => p.is_deleted).length
+  if (deletedCount === 0 && !showDeleted) return null
+  return (
+    <button
+      onClick={() => setShowDeleted(!showDeleted)}
+      className={`text-sm px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5 ${
+        showDeleted
+          ? 'border-red-300 bg-red-50 text-red-700'
+          : 'border-slate-300 hover:bg-slate-50 text-slate-500'
+      }`}
+    >
+      <span>{showDeleted ? '☑' : '☐'}</span>
+      הצג מחוקים {deletedCount > 0 && `(${deletedCount})`}
+    </button>
+  )
+}
+
 const NAV_TABS = [
   { href: '/app', label: 'מפה', exact: true },
   { href: '/app/activity', label: 'פעילות', exact: false },
@@ -160,6 +179,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </div>
         <div className="flex items-center gap-2 my-1">
+          <ShowDeletedToggle />
           <button
             onClick={() => exportSitemap(tree, activeAccount.slug)}
             className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition-colors"

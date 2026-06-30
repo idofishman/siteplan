@@ -17,7 +17,8 @@ export async function GET(request: Request) {
   const hasAccess = await verifyAccountAccess(supabase, user.id, accountId)
   if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // Paginate to bypass Supabase PostgREST's 1000-row default cap
+  // Paginate to bypass Supabase PostgREST's 1000-row default cap.
+  // Always return all pages including soft-deleted — client filters based on showDeleted toggle.
   const PAGE_SIZE = 1000
   const allPages: Page[] = []
   let from = 0

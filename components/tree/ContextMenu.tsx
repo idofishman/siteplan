@@ -4,10 +4,11 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useUiStore } from '@/stores/uiStore'
 import { useTreeStore } from '@/stores/treeStore'
+import type { Page } from '@/types'
 
 export function ContextMenu() {
   const { contextMenu, closeContextMenu, openModal } = useUiStore()
-  const { pages } = useTreeStore()
+  const { pages, restorePage } = useTreeStore()
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -53,42 +54,54 @@ export function ContextMenu() {
       style={{ left: x, top: y }}
       onMouseDown={e => e.stopPropagation()}
     >
-      {page.url && (
-        <a
-          href={page.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => closeContextMenu()}
-          className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+      {page.is_deleted ? (
+        // Deleted page — only show restore option
+        <button
+          onClick={() => action(() => restorePage(page.id))}
+          className="w-full text-right px-4 py-2 text-green-700 hover:bg-green-50 flex items-center gap-2"
         >
-          <span>🔗</span> בקר בעמוד
-        </a>
+          <span>↩️</span> שחזר דף
+        </button>
+      ) : (
+        <>
+          {page.url && (
+            <a
+              href={page.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => closeContextMenu()}
+              className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <span>🔗</span> בקר בעמוד
+            </a>
+          )}
+          <button
+            onClick={() => action(() => openModal('addPage', { parentId: page.id }))}
+            className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+          >
+            <span>+</span> הוסף עמוד ילד
+          </button>
+          <button
+            onClick={() => action(() => openModal('editPage', page))}
+            className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+          >
+            <span>✏️</span> עריכה
+          </button>
+          <button
+            onClick={() => action(() => openModal('pageHistory', { pageId: page.id, pageName: page.name }))}
+            className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+          >
+            <span>📋</span> היסטוריית שינויים
+          </button>
+          <hr className="border-slate-100" />
+          <button
+            onClick={() => action(() => openModal('deletePage', { pageId: page.id, pageName: page.name }))}
+            className="w-full text-right px-4 py-2 text-red-600 hover:bg-red-50 flex items-center gap-2"
+          >
+            <span>🗑</span> מחיקה
+          </button>
+        </>
       )}
-      <button
-        onClick={() => action(() => openModal('addPage', { parentId: page.id }))}
-        className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-      >
-        <span>+</span> הוסף עמוד ילד
-      </button>
-      <button
-        onClick={() => action(() => openModal('editPage', page))}
-        className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-      >
-        <span>✏️</span> עריכה
-      </button>
-      <button
-        onClick={() => action(() => openModal('pageHistory', { pageId: page.id, pageName: page.name }))}
-        className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-      >
-        <span>📋</span> היסטוריית שינויים
-      </button>
-      <hr className="border-slate-100" />
-      <button
-        onClick={() => action(() => openModal('deletePage', { pageId: page.id, pageName: page.name }))}
-        className="w-full text-right px-4 py-2 text-red-600 hover:bg-red-50 flex items-center gap-2"
-      >
-        <span>🗑</span> מחיקה
-      </button>
     </div>,
     document.body
   )

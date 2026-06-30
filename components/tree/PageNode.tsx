@@ -87,7 +87,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         onContextMenu={handleContextMenu}
         className={`
           group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-          ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
+          ${node.is_deleted ? 'opacity-50' : isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
         `}
         style={{
           paddingRight: `${depth * 20 + 12}px`,
@@ -124,9 +124,12 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           {accentColor && (
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
           )}
-          <span className="text-sm text-slate-800 truncate min-w-0">
+          <span className={`text-sm truncate min-w-0 ${node.is_deleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
             {searchQuery ? highlight(node.name, searchQuery) : node.name}
           </span>
+          {node.is_deleted && (
+            <span className="text-[10px] text-red-400 font-medium shrink-0">מחוק</span>
+          )}
         </span>
 
         {/* 4. Descendant count — fixed slot, empty when zero */}

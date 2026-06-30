@@ -98,15 +98,19 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     reassignTo = body.reassign_to ?? null
     cascade = !!body.cascade
   } catch {
-    // No body or non-JSON body — proceed with simple delete
+    // No body or non-JSON body — proceed with simple soft-delete
   }
 
+  const deletedAt = new Date().toISOString()
+  const userName = await getDisplayName(supabase, user.id)
+
   if (cascade) {
-    // Recursively find all descendant page ids and delete them all
+    // Collect all descendant ids and soft-delete them all
     const { data: allPages } = await supabase
       .from('pages')
       .select('id, parent_id')
       .eq('account_id', page.account_id)
+      .eq('is_deleted', false)
     const childrenMap = new Map<string, string[]>()
     for (const p of allPages ?? []) {
       if (p.parent_id) {
@@ -120,19 +124,23 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       for (const child of childrenMap.get(id) ?? []) collect(child)
     }
     collect(params.id)
-    const { error } = await supabase.from('pages').delete().in('id', toDelete)
+    const { error } = await supabase
+      .from('pages')
+      .update({ is_deleted: true, deleted_at: deletedAt })
+      .in('id', toDelete)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    const userName = await getDisplayName(supabase, user.id)
-    await logActivity(supabase, {
-      account_id: page.account_id, user_id: user.id, user_name: userName,
-      action: 'page_deleted', entity_type: 'page', entity_id: page.id, entity_name: page.name,
-      details: { cascade: true, deleted_count: toDelete.length },
-    })
+    try {
+      await logActivity(supabase, {
+        account_id: page.account_id, user_id: user.id, user_name: userName,
+        action: 'page_deleted', entity_type: 'page', entity_id: page.id, entity_name: page.name,
+        details: { cascade: true, deleted_count: toDelete.length, soft: true },
+      })
+    } catch (e) { console.error('[DELETE] logActivity failed:', e) }
     return NextResponse.json({ deleted_count: toDelete.length })
   }
 
   if (reassignTo) {
-    // Re-parent direct children to reassignTo before deleting
+    // Re-parent direct children before soft-deleting this page
     const { error: reparentErr } = await supabase
       .from('pages')
       .update({ parent_id: reassignTo })
@@ -140,15 +148,19 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     if (reparentErr) return NextResponse.json({ error: reparentErr.message }, { status: 500 })
   }
 
-  const { error } = await supabase.from('pages').delete().eq('id', params.id)
+  const { error } = await supabase
+    .from('pages')
+    .update({ is_deleted: true, deleted_at: deletedAt })
+    .eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const userName = await getDisplayName(supabase, user.id)
-  await logActivity(supabase, {
-    account_id: page.account_id, user_id: user.id, user_name: userName,
-    action: 'page_deleted', entity_type: 'page', entity_id: page.id, entity_name: page.name,
-    details: reassignTo ? { reassigned_children_to: reassignTo } : undefined,
-  })
+  try {
+    await logActivity(supabase, {
+      account_id: page.account_id, user_id: user.id, user_name: userName,
+      action: 'page_deleted', entity_type: 'page', entity_id: page.id, entity_name: page.name,
+      details: reassignTo ? { reassigned_children_to: reassignTo, soft: true } : { soft: true },
+    })
+  } catch (e) { console.error('[DELETE] logActivity failed:', e) }
 
   return NextResponse.json({ deleted_count: 1 })
 }

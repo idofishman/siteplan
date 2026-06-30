@@ -138,7 +138,7 @@ export function DeleteConfirmModal() {
           </div>
         )}
 
-        <p className="text-xs text-slate-400">פעולה זו לא ניתנת לביטול.</p>
+        <p className="text-xs text-slate-400">הדף יועבר לפח המיחזור — ניתן לשחזר אותו מאוחר יותר.</p>
 
         <div className="flex gap-2">
           <button
