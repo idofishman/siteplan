@@ -80,6 +80,7 @@ export interface Page {
   sort_order: number
   is_deleted: boolean
   deleted_at: string | null
+  is_verified: boolean
   created_by: string | null
   updated_by: string | null
   created_at: string

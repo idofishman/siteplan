@@ -16,9 +16,10 @@ interface LevelProps {
   gscClicks: Record<string, number>
   visibleIds?: Set<string> | null
   searchQuery?: string
+  exactMatchId?: string | null
 }
 
-function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, searchQuery }: LevelProps) {
+function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, searchQuery, exactMatchId }: LevelProps) {
   const { expandedNodeIds } = useUiStore()
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const filteredNodes = visibleIds ? nodes.filter(n => visibleIds.has(n.id)) : nodes
@@ -56,6 +57,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
                         gscClicks={gscClicks}
                         visibleIds={visibleIds}
                         searchQuery={searchQuery}
+                        exactMatchId={exactMatchId}
                         showDragIcon
                       />
                     </div>
@@ -68,6 +70,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
                         gscClicks={gscClicks}
                         visibleIds={visibleIds}
                         searchQuery={searchQuery}
+                        exactMatchId={exactMatchId}
                       />
                     )}
                   </div>
@@ -82,7 +85,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
   )
 }
 
-export function PageTree({ accountId, visibleIds, searchQuery }: { accountId: string; visibleIds?: Set<string> | null; searchQuery?: string }) {
+export function PageTree({ accountId, visibleIds, searchQuery, exactMatchId }: { accountId: string; visibleIds?: Set<string> | null; searchQuery?: string; exactMatchId?: string | null }) {
   const { tree, gscClicks, loadPages, loadGsc } = useTreeStore()
   const { initExpanded } = useUiStore()
 
@@ -121,6 +124,7 @@ export function PageTree({ accountId, visibleIds, searchQuery }: { accountId: st
         gscClicks={gscClicks}
         visibleIds={visibleIds}
         searchQuery={searchQuery}
+        exactMatchId={exactMatchId}
       />
     </DragDropProvider>
   )

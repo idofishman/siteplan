@@ -26,6 +26,22 @@ export default function AppPage() {
 
   const hasClicksFilter = clicksFilterValue !== '' && !isNaN(Number(clicksFilterValue))
 
+  const exactMatchId = useMemo<string | null>(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return null
+    // Find a page whose URL exactly matches the query (normalized path)
+    for (const p of pages) {
+      if (!p.url) continue
+      try {
+        const path = new URL(p.url.startsWith('http') ? p.url : `https://x${p.url.startsWith('/') ? '' : '/'}${p.url}`).pathname
+        if (path.toLowerCase() === q || p.url.toLowerCase() === q) return p.id
+      } catch {
+        if (p.url.toLowerCase() === q) return p.id
+      }
+    }
+    return null
+  }, [search, pages])
+
   const visibleIds = useMemo<Set<string> | null>(() => {
     const q = search.trim().toLowerCase()
     if (!q && !hasClicksFilter) return null
@@ -78,7 +94,7 @@ export default function AppPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="border-b border-slate-200 px-4 py-2 flex items-center gap-3 bg-white shrink-0 flex-wrap">
+      <div className="sticky top-0 z-10 border-b border-slate-200 px-4 py-2 flex items-center gap-3 bg-white shrink-0 flex-wrap">
         {/* Left: title + collapse */}
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-sm font-medium text-slate-700">מבנה האתר</span>
@@ -169,7 +185,7 @@ export default function AppPage() {
       <BulkToolbar />
 
       <div className="flex-1 overflow-auto px-2 py-2">
-        <PageTree accountId={activeAccount.id} visibleIds={visibleIds} searchQuery={search.trim() || undefined} />
+        <PageTree accountId={activeAccount.id} visibleIds={visibleIds} searchQuery={search.trim() || undefined} exactMatchId={exactMatchId} />
       </div>
 
       <AddEditPageModal />

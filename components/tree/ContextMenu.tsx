@@ -4,11 +4,10 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useUiStore } from '@/stores/uiStore'
 import { useTreeStore } from '@/stores/treeStore'
-import type { Page } from '@/types'
 
 export function ContextMenu() {
   const { contextMenu, closeContextMenu, openModal } = useUiStore()
-  const { pages, restorePage } = useTreeStore()
+  const { pages, restorePage, updatePage } = useTreeStore()
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,7 +30,7 @@ export function ContextMenu() {
 
   // Position menu so it always stays inside the viewport
   const MENU_W = 192
-  const MENU_H = page.url ? 204 : 164
+  const MENU_H = page.url ? 244 : 204
   const PAD = 8
   // Flip horizontal: open to the left if would overflow right
   const x = contextMenu.x + MENU_W + PAD > window.innerWidth
@@ -92,6 +91,12 @@ export function ContextMenu() {
             className="w-full text-right px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
           >
             <span>📋</span> היסטוריית שינויים
+          </button>
+          <button
+            onClick={() => action(() => updatePage(page.id, { is_verified: !page.is_verified }))}
+            className="w-full text-right px-4 py-2 text-emerald-700 hover:bg-emerald-50 flex items-center gap-2"
+          >
+            <span>{page.is_verified ? '☑' : '☐'}</span> {page.is_verified ? 'בטל אישור' : 'סמן כמאושר'}
           </button>
           <hr className="border-slate-100" />
           <button

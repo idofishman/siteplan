@@ -103,6 +103,7 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
       sort_order: 0,
       is_deleted: false,
       deleted_at: null,
+      is_verified: false,
       created_by: null,
       updated_by: null,
       created_at: new Date().toISOString(),

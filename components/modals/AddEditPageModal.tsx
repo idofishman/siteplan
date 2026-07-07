@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useTreeStore } from '@/stores/treeStore'
 import { useAccountStore } from '@/stores/accountStore'
@@ -10,9 +10,21 @@ import type { Page, PageStatus } from '@/types'
 
 const STATUSES: PageStatus[] = ['planned', 'existing', 'in_progress', 'needs_review', 'approved', 'deprecated', 'redirect', 'archived']
 
+function getDescendantIdsFlat(pages: Page[], rootId: string): Set<string> {
+  const result = new Set<string>()
+  const stack = [rootId]
+  while (stack.length) {
+    const id = stack.pop()!
+    for (const p of pages) {
+      if (p.parent_id === id) { result.add(p.id); stack.push(p.id) }
+    }
+  }
+  return result
+}
+
 export function AddEditPageModal() {
   const { activeModal, modalPayload, closeModal } = useUiStore()
-  const { addPage, updatePage } = useTreeStore()
+  const { addPage, updatePage, pages } = useTreeStore()
   const { activeAccount } = useAccountStore()
 
   const isEdit = activeModal === 'editPage'
@@ -20,7 +32,7 @@ export function AddEditPageModal() {
   const open = isEdit || isAdd
 
   const page = (isEdit ? modalPayload : null) as Page | null
-  const parentId = (isAdd ? (modalPayload as { parentId?: string })?.parentId : null) ?? null
+  const addParentId = (isAdd ? (modalPayload as { parentId?: string })?.parentId : null) ?? null
 
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
@@ -28,6 +40,8 @@ export function AddEditPageModal() {
   const [color, setColor] = useState<string | null>(null)
   const [template, setTemplate] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
+  const [isVerified, setIsVerified] = useState(false)
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -39,9 +53,18 @@ export function AddEditPageModal() {
       setColor(page?.color ?? null)
       setTemplate(page?.template ?? null)
       setNotes(page?.notes ?? '')
+      setIsVerified(page?.is_verified ?? false)
+      setSelectedParentId(isEdit ? (page?.parent_id ?? null) : addParentId)
       setError(null)
     }
   }, [open, page?.id])
+
+  // Pages available as parent: exclude self and its descendants
+  const parentOptions = useMemo(() => {
+    if (!page) return pages.filter(p => !p.is_deleted)
+    const forbidden = new Set([page.id, ...getDescendantIdsFlat(pages, page.id)])
+    return pages.filter(p => !forbidden.has(p.id) && !p.is_deleted)
+  }, [pages, page?.id])
 
   if (!open || !activeAccount) return null
 
@@ -54,17 +77,27 @@ export function AddEditPageModal() {
 
     try {
       if (isEdit && page) {
-        await updatePage(page.id, { name: name.trim(), url: url.trim() || null, status, color, template, notes: notes.trim() || null })
-      } else {
-        await addPage({
-          account_id: activeAccount!.id,
-          parent_id: parentId,
+        await updatePage(page.id, {
           name: name.trim(),
           url: url.trim() || null,
           status,
           color,
           template,
           notes: notes.trim() || null,
+          is_verified: isVerified,
+          parent_id: selectedParentId,
+        })
+      } else {
+        await addPage({
+          account_id: activeAccount!.id,
+          parent_id: selectedParentId,
+          name: name.trim(),
+          url: url.trim() || null,
+          status,
+          color,
+          template,
+          notes: notes.trim() || null,
+          is_verified: isVerified,
           sort_order: 0,
         })
       }
@@ -80,7 +113,7 @@ export function AddEditPageModal() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={closeModal}>
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 flex flex-col gap-4"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -112,6 +145,21 @@ export function AddEditPageModal() {
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
             placeholder="/about"
           />
+        </div>
+
+        {/* Parent Page */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700">עמוד אב</label>
+          <select
+            value={selectedParentId ?? ''}
+            onChange={e => setSelectedParentId(e.target.value || null)}
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+          >
+            <option value="">— ללא עמוד אב (שורש) —</option>
+            {parentOptions.map(p => (
+              <option key={p.id} value={p.id}>{p.name}{p.url ? ` (${p.url})` : ''}</option>
+            ))}
+          </select>
         </div>
 
         {/* Status */}
@@ -167,6 +215,18 @@ export function AddEditPageModal() {
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 resize-none"
           />
         </div>
+
+        {/* Mark Completed */}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isVerified}
+            onChange={e => setIsVerified(e.target.checked)}
+            className="w-4 h-4 rounded accent-emerald-600"
+          />
+          <span className="text-sm font-medium text-slate-700">סמן כמאושר ✓</span>
+          {isVerified && <span className="text-xs text-emerald-600">העמוד מאושר</span>}
+        </label>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

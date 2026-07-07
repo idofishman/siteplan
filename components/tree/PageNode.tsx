@@ -26,6 +26,7 @@ interface Props {
   gscClicks: Record<string, number>
   visibleIds?: Set<string> | null
   searchQuery?: string
+  exactMatchId?: string | null
   showDragIcon?: boolean
 }
 
@@ -66,9 +67,10 @@ function formatClicks(n: number): string {
 }
 
 
-export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, showDragIcon }: Props) {
+export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, exactMatchId, showDragIcon }: Props) {
   const { selectedPageIds, expandedNodeIds, toggleExpand, toggleSelect, openModal, openContextMenu } = useUiStore()
   const { profilesMap } = useTreeStore()
+  const isExactMatch = exactMatchId === node.id
   const isSearching = visibleIds !== null && visibleIds !== undefined
   const isExpanded = isSearching ? true : expandedNodeIds.has(node.id)
   const isSelected = selectedPageIds.has(node.id)
@@ -102,7 +104,7 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
         onContextMenu={handleContextMenu}
         className={`
           group flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-          ${node.is_deleted ? 'opacity-50' : isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
+          ${node.is_deleted ? 'opacity-50' : isExactMatch ? 'bg-amber-50 ring-1 ring-amber-300 hover:bg-amber-100' : isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50'}
         `}
         style={{
           paddingRight: `${depth * 20 + 12}px`,
@@ -150,9 +152,15 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, show
           {node.is_deleted && (
             <span className="text-[10px] text-red-400 font-medium shrink-0">מחוק</span>
           )}
-          {/* Last-edited chip — shown on hover via group */}
+          {node.is_verified && !node.is_deleted && (
+            <span className="text-[10px] text-emerald-600 font-medium shrink-0" title="מאושר">✓</span>
+          )}
+          {/* Last-edited chip — always visible */}
           {!node.is_deleted && node.updated_at && (
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+            <span
+              className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap"
+              title={new Date(node.updated_at).toLocaleString('he-IL')}
+            >
               {node.updated_by && profilesMap[node.updated_by]
                 ? `${profilesMap[node.updated_by]} · ${timeAgoHe(node.updated_at)}`
                 : timeAgoHe(node.updated_at)}
