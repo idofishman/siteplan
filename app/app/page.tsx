@@ -92,9 +92,9 @@ export default function AppPage() {
   const isFiltering = visibleIds !== null
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 px-4 py-2 flex items-center gap-3 bg-white shrink-0 flex-wrap">
+    <div className="flex flex-col min-h-full">
+      {/* Toolbar — sticky works because main in layout is the scroll container */}
+      <div className="sticky top-0 z-10 border-b border-slate-200 px-4 py-2 flex items-center gap-3 bg-white flex-wrap">
         {/* Left: title + collapse */}
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-sm font-medium text-slate-700">מבנה האתר</span>
@@ -184,7 +184,7 @@ export default function AppPage() {
 
       <BulkToolbar />
 
-      <div className="flex-1 overflow-auto px-2 py-2">
+      <div className="px-2 py-2">
         <PageTree accountId={activeAccount.id} visibleIds={visibleIds} searchQuery={search.trim() || undefined} exactMatchId={exactMatchId} />
       </div>
 
