@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useTreeStore } from '@/stores/treeStore'
 import { useAccountStore } from '@/stores/accountStore'
@@ -20,6 +20,105 @@ function getDescendantIdsFlat(pages: Page[], rootId: string): Set<string> {
     }
   }
   return result
+}
+
+interface ParentPickerProps {
+  options: Page[]
+  value: string | null
+  onChange: (id: string | null) => void
+}
+
+function ParentPicker({ options, value, onChange }: ParentPickerProps) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const selected = options.find(p => p.id === value) ?? null
+  const displayLabel = selected ? selected.name : '— ללא עמוד אב (שורש) —'
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return options
+    return options.filter(p =>
+      p.name.toLowerCase().includes(q) || (p.url ?? '').toLowerCase().includes(q)
+    )
+  }, [options, query])
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 0)
+  }, [open])
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    if (open) document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [open])
+
+  function select(id: string | null) {
+    onChange(id)
+    setOpen(false)
+    setQuery('')
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full text-right border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white flex items-center justify-between gap-2"
+      >
+        <span className={`truncate ${!selected ? 'text-slate-400' : 'text-slate-800'}`}>{displayLabel}</span>
+        <svg className={`w-4 h-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 left-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col overflow-hidden max-h-60">
+          <div className="p-2 border-b border-slate-100 shrink-0">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="חיפוש..."
+              className="w-full text-sm border border-slate-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              dir="rtl"
+            />
+          </div>
+          <div className="overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => select(null)}
+              className={`w-full text-right px-3 py-2 text-sm hover:bg-slate-50 ${!value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-500'}`}
+            >
+              — ללא עמוד אב (שורש) —
+            </button>
+            {filtered.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => select(p.id)}
+                className={`w-full text-right px-3 py-2 text-sm hover:bg-slate-50 flex flex-col gap-0.5 ${value === p.id ? 'bg-blue-50' : ''}`}
+              >
+                <span className={`font-medium truncate ${value === p.id ? 'text-blue-700' : 'text-slate-800'}`}>{p.name}</span>
+                {p.url && <span className="text-xs text-slate-400 truncate" dir="ltr">{p.url}</span>}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-4 text-sm text-slate-400 text-center">לא נמצאו תוצאות</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function AddEditPageModal() {
@@ -65,6 +164,12 @@ export function AddEditPageModal() {
     const forbidden = new Set([page.id, ...getDescendantIdsFlat(pages, page.id)])
     return pages.filter(p => !forbidden.has(p.id) && !p.is_deleted)
   }, [pages, page?.id])
+
+  // All colors: standard palette + any colors already in use in this sitemap
+  const allColors = useMemo(() => {
+    const inUse = pages.map(p => p.color).filter((c): c is string => !!c)
+    return [...new Set([...COLORS, ...inUse])]
+  }, [pages])
 
   if (!open || !activeAccount) return null
 
@@ -150,16 +255,7 @@ export function AddEditPageModal() {
         {/* Parent Page */}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700">עמוד אב</label>
-          <select
-            value={selectedParentId ?? ''}
-            onChange={e => setSelectedParentId(e.target.value || null)}
-            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-          >
-            <option value="">— ללא עמוד אב (שורש) —</option>
-            {parentOptions.map(p => (
-              <option key={p.id} value={p.id}>{p.name}{p.url ? ` (${p.url})` : ''}</option>
-            ))}
-          </select>
+          <ParentPicker options={parentOptions} value={selectedParentId} onChange={setSelectedParentId} />
         </div>
 
         {/* Status */}
@@ -192,7 +288,7 @@ export function AddEditPageModal() {
               className={`w-6 h-6 rounded-full border-2 ${!color ? 'border-slate-800' : 'border-slate-200'} bg-white`}
               aria-label="ללא צבע"
             />
-            {COLORS.map(c => (
+            {allColors.map(c => (
               <button
                 key={c}
                 type="button"
