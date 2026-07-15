@@ -1,21 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import type { ActivityEntry } from '@/types'
-
-const ACTION_LABELS: Record<string, string> = {
-  page_created: 'עמוד נוסף',
-  page_updated: 'עמוד עודכן',
-  page_deleted: 'עמוד נמחק',
-  pages_bulk: 'עדכון קבוצתי',
-  import_applied: 'ייבוא',
-  snapshot_created: 'צלמית נוצרה',
-  snapshot_restored: 'שחזור',
-  snapshot_deleted: 'צלמית נמחקה',
-  sitemap_cleared: 'מפה נמחקה',
-  gsc_imported: 'GSC יובא',
-}
+import { useTreeStore } from '@/stores/treeStore'
 
 function relativeHe(date: Date): string {
   const diff = Math.floor((Date.now() - date.getTime()) / 1000)
@@ -39,63 +25,28 @@ function exactHe(date: Date): string {
   })
 }
 
-export function LastEdited({ accountId }: { accountId: string }) {
-  const [latest, setLatest] = useState<ActivityEntry | null | undefined>(undefined)
+export function LastEdited({ accountId: _ }: { accountId: string }) {
+  const { pages, profilesMap } = useTreeStore()
   const [, tick] = useState(0)
 
-  // Re-render every minute to update relative time
   useEffect(() => {
     const id = setInterval(() => tick(n => n + 1), 60_000)
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => {
-    if (!accountId) return
-    const supabase = createClient()
+  const latest = pages
+    .filter(p => p.updated_at)
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ?? null
 
-    async function fetchLatest() {
-      const { data } = await supabase
-        .from('activity_log')
-        .select('*')
-        .eq('account_id', accountId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-      setLatest(data ?? null)
-    }
+  if (!latest) return null
 
-    fetchLatest()
-
-    const channel = supabase
-      .channel(`last-edited-${accountId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'activity_log', filter: `account_id=eq.${accountId}` },
-        (payload) => setLatest(payload.new as ActivityEntry)
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [accountId])
-
-  if (latest === undefined) return null
-
-  if (!latest) {
-    return (
-      <span className="text-xs text-slate-400">אין עדכונים עדיין</span>
-    )
-  }
-
-  const date = new Date(latest.created_at)
-  const action = ACTION_LABELS[latest.action] ?? latest.action
-  const tooltip = `${exactHe(date)} · ${action}`
+  const date = new Date(latest.updated_at)
+  const editorName = latest.updated_by ? (profilesMap[latest.updated_by] ?? null) : null
+  const tooltip = `${latest.name} · ${exactHe(date)}`
 
   return (
-    <span
-      className="text-xs text-slate-400 cursor-default"
-      title={tooltip}
-    >
-      עודכן {relativeHe(date)} על ידי {latest.user_name}
+    <span className="text-xs text-slate-400 cursor-default" title={tooltip}>
+      עודכן {relativeHe(date)}{editorName ? ` על ידי ${editorName}` : ''}
     </span>
   )
 }
