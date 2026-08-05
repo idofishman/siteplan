@@ -47,7 +47,8 @@ const NAV_TABS = [
 function serializeNode(node: PageNode): Record<string, unknown> {
   return {
     name: node.name,
-    url: node.url ?? undefined,
+    old_url: node.url ?? undefined,
+    new_url: node.new_url ?? undefined,
     template: node.template ?? undefined,
     status: node.status,
     color: node.color ?? undefined,

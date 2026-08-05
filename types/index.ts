@@ -73,6 +73,7 @@ export interface Page {
   name: string
   url: string | null
   url_normalized: string | null
+  new_url: string | null
   color: string | null
   template: string | null
   status: PageStatus

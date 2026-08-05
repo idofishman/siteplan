@@ -153,7 +153,21 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, exac
             <span className="text-[10px] text-red-400 font-medium shrink-0">מחוק</span>
           )}
           {node.is_verified && !node.is_deleted && (
-            <span className="text-[10px] text-emerald-600 font-medium shrink-0" title="מאושר">✓</span>
+            <span
+              className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 border border-emerald-600"
+              title="מאושר ✓"
+            />
+          )}
+          {node.new_url && !node.is_deleted && (
+            <span
+              className="shrink-0 text-amber-500"
+              title={`כתובת חדשה: ${node.new_url}`}
+              aria-label="יש כתובת חדשה"
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+              </svg>
+            </span>
           )}
           {/* Last-edited chip — always visible */}
           {!node.is_deleted && node.updated_at && (

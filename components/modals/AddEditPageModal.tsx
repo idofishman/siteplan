@@ -135,6 +135,7 @@ export function AddEditPageModal() {
 
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
+  const [newUrl, setNewUrl] = useState('')
   const [status, setStatus] = useState<PageStatus>('planned')
   const [color, setColor] = useState<string | null>(null)
   const [template, setTemplate] = useState<string | null>(null)
@@ -148,6 +149,7 @@ export function AddEditPageModal() {
     if (open) {
       setName(page?.name ?? '')
       setUrl(page?.url ?? '')
+      setNewUrl(page?.new_url ?? '')
       setStatus(page?.status ?? 'planned')
       setColor(page?.color ?? null)
       setTemplate(page?.template ?? null)
@@ -185,6 +187,7 @@ export function AddEditPageModal() {
         await updatePage(page.id, {
           name: name.trim(),
           url: url.trim() || null,
+          new_url: newUrl.trim() || null,
           status,
           color,
           template,
@@ -198,6 +201,7 @@ export function AddEditPageModal() {
           parent_id: selectedParentId,
           name: name.trim(),
           url: url.trim() || null,
+          new_url: newUrl.trim() || null,
           status,
           color,
           template,
@@ -249,6 +253,21 @@ export function AddEditPageModal() {
             onChange={e => setUrl(e.target.value)}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
             placeholder="/about"
+          />
+        </div>
+
+        {/* New URL */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+            כתובת URL חדשה
+            <span className="text-[10px] font-normal text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">אתר חדש</span>
+          </label>
+          <input
+            dir="ltr"
+            value={newUrl}
+            onChange={e => setNewUrl(e.target.value)}
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="/new-about"
           />
         </div>
 

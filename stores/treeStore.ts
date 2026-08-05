@@ -104,6 +104,7 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
       is_deleted: false,
       deleted_at: null,
       is_verified: false,
+      new_url: null,
       created_by: null,
       updated_by: null,
       created_at: new Date().toISOString(),
