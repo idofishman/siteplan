@@ -34,6 +34,27 @@ function SlugPreviewModal({ account, onClose, onApplied }: SlugPreviewModalProps
   const [page, setPage] = useState(0)
   const [applying, setApplying] = useState(false)
   const [filter, setFilter] = useState<'all' | 'to_update' | 'has_slug'>('to_update')
+  const [saving, setSaving] = useState<Record<string, boolean>>({})
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+
+  async function handleSlugEdit(rowId: string, value: string) {
+    const clean = value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+    if (!clean) return
+    setSaving(s => ({ ...s, [rowId]: true }))
+    const res = await fetch(`/api/pages/${rowId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_url: clean }),
+    })
+    setSaving(s => ({ ...s, [rowId]: false }))
+    if (res.ok) {
+      setRows(prev => prev.map(r => r.id === rowId
+        ? { ...r, existing_slug: clean, generated_slug: clean, would_update: false }
+        : r
+      ))
+      setSavedIds(s => new Set(s).add(rowId))
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/admin/generate-slugs?account_id=${account.id}`)
@@ -130,26 +151,38 @@ function SlugPreviewModal({ account, onClose, onApplied }: SlugPreviewModalProps
                 </tr>
               </thead>
               <tbody>
-                {slice.map((row, i) => (
-                  <tr key={row.id} className={`border-b border-slate-100 ${row.would_update ? '' : 'bg-slate-50 opacity-60'}`}>
-                    <td className="px-4 py-2 text-xs text-slate-400 tabular-nums">{page * PAGE_SIZE + i + 1}</td>
-                    <td className="px-4 py-2 text-slate-800 font-medium max-w-[200px] truncate" title={row.name}>{row.name}</td>
-                    <td className="px-4 py-2 text-slate-400 font-mono text-xs max-w-[280px] truncate" dir="ltr" title={row.current_url ?? ''}>
-                      {row.current_url ?? '—'}
-                    </td>
-                    <td className="px-4 py-2">
-                      {row.would_update ? (
-                        <span className="font-mono text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
-                          {row.generated_slug ?? '—'}
-                        </span>
-                      ) : (
-                        <span className="font-mono text-xs text-slate-400" title="כבר קיים, לא ישתנה">
-                          {row.existing_slug} <span className="text-slate-300">(קיים)</span>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {slice.map((row, i) => {
+                  const currentSlug = row.existing_slug ?? row.generated_slug ?? ''
+                  const isSaving = saving[row.id]
+                  const isSaved = savedIds.has(row.id)
+                  return (
+                    <tr key={row.id} className={`border-b border-slate-100 ${row.would_update && !isSaved ? '' : 'bg-slate-50'}`}>
+                      <td className="px-4 py-2 text-xs text-slate-400 tabular-nums">{page * PAGE_SIZE + i + 1}</td>
+                      <td className="px-4 py-2 text-slate-800 font-medium max-w-[200px] truncate" title={row.name}>{row.name}</td>
+                      <td className="px-4 py-2 text-slate-400 font-mono text-xs max-w-[280px] truncate" dir="ltr" title={row.current_url ?? ''}>
+                        {row.current_url ?? '—'}
+                      </td>
+                      <td className="px-4 py-2 min-w-[180px]">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            key={currentSlug}
+                            defaultValue={currentSlug}
+                            dir="ltr"
+                            className={`font-mono text-xs px-2 py-0.5 rounded border w-full focus:outline-none focus:ring-1 focus:ring-emerald-400 ${
+                              isSaved ? 'border-emerald-300 bg-emerald-50 text-emerald-700' :
+                              row.would_update ? 'border-slate-200 bg-white text-slate-700' :
+                              'border-slate-200 bg-slate-50 text-slate-500'
+                            }`}
+                            onBlur={e => { if (e.target.value !== currentSlug) handleSlugEdit(row.id, e.target.value) }}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+                          />
+                          {isSaving && <span className="text-slate-400 text-xs shrink-0">...</span>}
+                          {isSaved && !isSaving && <span className="text-emerald-500 text-xs shrink-0">✓</span>}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
                 {slice.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-4 py-12 text-center text-slate-400 text-sm">אין רשומות להצגה</td>
