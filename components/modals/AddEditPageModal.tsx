@@ -9,6 +9,7 @@ import { COLORS, STATUS_LABELS } from '@/lib/constants'
 import type { Page, PageStatus } from '@/types'
 
 const STATUSES: PageStatus[] = ['planned', 'existing', 'in_progress', 'needs_review', 'approved', 'deprecated', 'redirect', 'archived']
+const NEW_SITE_BASE = 'https://academy.mly.co.il'
 
 function getDescendantIdsFlat(pages: Page[], rootId: string): Set<string> {
   const result = new Set<string>()
@@ -20,6 +21,19 @@ function getDescendantIdsFlat(pages: Page[], rootId: string): Set<string> {
     }
   }
   return result
+}
+
+function buildNewUrlPath(pages: Page[], parentId: string | null, slug: string): string {
+  const parts: string[] = []
+  let id = parentId
+  while (id) {
+    const p = pages.find(x => x.id === id)
+    if (!p) break
+    if (p.new_url) parts.unshift(p.new_url)
+    id = p.parent_id
+  }
+  if (slug.trim()) parts.push(slug.trim())
+  return parts.join('/')
 }
 
 interface ParentPickerProps {
@@ -121,6 +135,15 @@ function ParentPicker({ options, value, onChange }: ParentPickerProps) {
   )
 }
 
+function EyeIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  )
+}
+
 export function AddEditPageModal() {
   const { activeModal, modalPayload, closeModal } = useUiStore()
   const { addPage, updatePage, pages } = useTreeStore()
@@ -135,12 +158,14 @@ export function AddEditPageModal() {
 
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
-  const [newUrl, setNewUrl] = useState('')
+  const [newUrlSlug, setNewUrlSlug] = useState('')
   const [status, setStatus] = useState<PageStatus>('planned')
   const [color, setColor] = useState<string | null>(null)
   const [template, setTemplate] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [isVerified, setIsVerified] = useState(false)
+  const [isLiveOnNewSite, setIsLiveOnNewSite] = useState(false)
+  const [newSiteLiveAt, setNewSiteLiveAt] = useState<string | null>(null)
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -149,12 +174,14 @@ export function AddEditPageModal() {
     if (open) {
       setName(page?.name ?? '')
       setUrl(page?.url ?? '')
-      setNewUrl(page?.new_url ?? '')
+      setNewUrlSlug(page?.new_url ?? '')
       setStatus(page?.status ?? 'planned')
       setColor(page?.color ?? null)
       setTemplate(page?.template ?? null)
       setNotes(page?.notes ?? '')
       setIsVerified(page?.is_verified ?? false)
+      setNewSiteLiveAt(page?.new_site_live_at ?? null)
+      setIsLiveOnNewSite(!!(page?.new_site_live_at))
       setSelectedParentId(isEdit ? (page?.parent_id ?? null) : addParentId)
       setError(null)
     }
@@ -173,6 +200,22 @@ export function AddEditPageModal() {
     return [...new Set([...COLORS, ...inUse])]
   }, [pages])
 
+  // Compute the full new URL path from parent chain + current slug
+  const newUrlPath = useMemo(
+    () => buildNewUrlPath(pages, selectedParentId, newUrlSlug),
+    [pages, selectedParentId, newUrlSlug]
+  )
+  const fullNewUrl = newUrlPath ? `${NEW_SITE_BASE}/${newUrlPath}/` : null
+
+  function handleLiveToggle(checked: boolean) {
+    setIsLiveOnNewSite(checked)
+    if (checked && !newSiteLiveAt) {
+      setNewSiteLiveAt(new Date().toISOString())
+    } else if (!checked) {
+      setNewSiteLiveAt(null)
+    }
+  }
+
   if (!open || !activeAccount) return null
 
   async function handleSubmit(e: React.FormEvent) {
@@ -182,17 +225,20 @@ export function AddEditPageModal() {
     setSaving(true)
     setError(null)
 
+    const slugClean = newUrlSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || null
+
     try {
       if (isEdit && page) {
         await updatePage(page.id, {
           name: name.trim(),
           url: url.trim() || null,
-          new_url: newUrl.trim() || null,
+          new_url: slugClean,
           status,
           color,
           template,
           notes: notes.trim() || null,
           is_verified: isVerified,
+          new_site_live_at: isLiveOnNewSite ? (newSiteLiveAt ?? new Date().toISOString()) : null,
           parent_id: selectedParentId,
         })
       } else {
@@ -201,12 +247,13 @@ export function AddEditPageModal() {
           parent_id: selectedParentId,
           name: name.trim(),
           url: url.trim() || null,
-          new_url: newUrl.trim() || null,
+          new_url: slugClean,
           status,
           color,
           template,
           notes: notes.trim() || null,
           is_verified: isVerified,
+          new_site_live_at: isLiveOnNewSite ? (newSiteLiveAt ?? new Date().toISOString()) : null,
           sort_order: 0,
         })
       }
@@ -244,31 +291,87 @@ export function AddEditPageModal() {
           />
         </div>
 
-        {/* URL */}
+        {/* Current URL */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700">כתובת URL *</label>
-          <input
-            dir="ltr"
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-            placeholder="/about"
-          />
+          <label className="text-sm font-medium text-slate-700">כתובת URL נוכחית *</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              dir="ltr"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              placeholder="/about"
+            />
+            {url && (
+              <a
+                href={url.startsWith('http') ? url : `https://www.colman.ac.il${url.startsWith('/') ? '' : '/'}${url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 text-slate-400 hover:text-blue-500 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                title="פתח באתר הנוכחי"
+                onClick={e => e.stopPropagation()}
+              >
+                <EyeIcon />
+              </a>
+            )}
+          </div>
         </div>
 
-        {/* New URL */}
+        {/* New URL slug */}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
-            כתובת URL חדשה
-            <span className="text-[10px] font-normal text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">אתר חדש</span>
+            Slug באתר החדש
+            <span className="text-[10px] font-normal text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">academy.mly.co.il</span>
           </label>
-          <input
-            dir="ltr"
-            value={newUrl}
-            onChange={e => setNewUrl(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            placeholder="/new-about"
-          />
+          <div className="flex items-center gap-1.5">
+            <input
+              dir="ltr"
+              value={newUrlSlug}
+              onChange={e => setNewUrlSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/--+/g, '-'))}
+              className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+              placeholder="slug-here"
+            />
+            {fullNewUrl && (
+              <a
+                href={fullNewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 text-slate-400 hover:text-emerald-600 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                title={`פתח באתר החדש: ${fullNewUrl}`}
+                onClick={e => e.stopPropagation()}
+              >
+                <EyeIcon />
+              </a>
+            )}
+          </div>
+          {fullNewUrl && (
+            <p className="text-[11px] text-slate-400 font-mono truncate" dir="ltr" title={fullNewUrl}>
+              {fullNewUrl}
+            </p>
+          )}
+        </div>
+
+        {/* Live on new site */}
+        <div className="flex flex-col gap-1.5 border border-slate-200 rounded-lg px-3 py-2.5 bg-slate-50">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isLiveOnNewSite}
+              onChange={e => handleLiveToggle(e.target.checked)}
+              className="w-4 h-4 rounded accent-amber-500"
+            />
+            <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+              </svg>
+              פעיל באתר החדש
+            </span>
+            {isLiveOnNewSite && newSiteLiveAt && (
+              <span className="text-xs text-slate-400 mr-auto">
+                {new Date(newSiteLiveAt).toLocaleDateString('he-IL')}
+              </span>
+            )}
+          </label>
         </div>
 
         {/* Parent Page */}

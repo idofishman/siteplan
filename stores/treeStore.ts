@@ -8,6 +8,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 interface TreeStore {
   pages: Page[]          // ALL pages including soft-deleted
   tree: PageNode[]       // filtered tree — respects showDeleted
+  loading: boolean
   saveStatus: SaveStatus
   gscClicks: Record<string, number>
   profilesMap: Record<string, string>  // user_id → display_name
@@ -45,6 +46,7 @@ function setTree(pages: Page[], showDeleted: boolean) {
 export const useTreeStore = create<TreeStore>((set, get) => ({
   pages: [],
   tree: [],
+  loading: false,
   saveStatus: 'idle',
   gscClicks: {},
   profilesMap: {},
@@ -60,15 +62,15 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
   },
 
   async loadPages(accountId: string) {
-    set({ accountId })
+    set({ accountId, loading: true })
     const [pagesRes, profilesRes] = await Promise.all([
       fetch(`/api/pages?account_id=${accountId}`),
       fetch(`/api/profiles?account_id=${accountId}`),
     ])
-    if (!pagesRes.ok) return
+    if (!pagesRes.ok) { set({ loading: false }); return }
     const pages: Page[] = await pagesRes.json()
     const profilesMap: Record<string, string> = profilesRes.ok ? await profilesRes.json() : {}
-    set(state => ({ ...setTree(pages, state.showDeleted), profilesMap }))
+    set(state => ({ ...setTree(pages, state.showDeleted), profilesMap, loading: false }))
     // Always keep homepage expanded
     const homepage = pages.find(p => p.template === 'homepage' && !p.parent_id)
     if (homepage) {
@@ -105,6 +107,7 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
       deleted_at: null,
       is_verified: false,
       new_url: null,
+      new_site_live_at: null,
       created_by: null,
       updated_by: null,
       created_at: new Date().toISOString(),

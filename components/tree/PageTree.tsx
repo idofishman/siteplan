@@ -86,7 +86,7 @@ function DroppableLevel({ nodes, droppableId, depth, gscClicks, visibleIds, sear
 }
 
 export function PageTree({ accountId, visibleIds, searchQuery, exactMatchId }: { accountId: string; visibleIds?: Set<string> | null; searchQuery?: string; exactMatchId?: string | null }) {
-  const { tree, gscClicks, loadPages, loadGsc } = useTreeStore()
+  const { tree, gscClicks, loading, loadPages, loadGsc } = useTreeStore()
   const { initExpanded } = useUiStore()
 
   useEffect(() => {
@@ -94,6 +94,15 @@ export function PageTree({ accountId, visibleIds, searchQuery, exactMatchId }: {
     loadPages(accountId)
     loadGsc(accountId)
   }, [accountId])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
+        <p className="text-sm">טוען את מבנה האתר...</p>
+      </div>
+    )
+  }
 
   if (tree.length === 0) {
     return (

@@ -82,6 +82,7 @@ export interface Page {
   is_deleted: boolean
   deleted_at: string | null
   is_verified: boolean
+  new_site_live_at: string | null
   created_by: string | null
   updated_by: string | null
   created_at: string

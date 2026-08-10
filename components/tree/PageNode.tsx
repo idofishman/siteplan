@@ -158,11 +158,11 @@ export function PageNode({ node, depth, gscClicks, visibleIds, searchQuery, exac
               title="מאושר ✓"
             />
           )}
-          {node.new_url && !node.is_deleted && (
+          {node.new_site_live_at && !node.is_deleted && (
             <span
               className="shrink-0 text-amber-500"
-              title={`כתובת חדשה: ${node.new_url}`}
-              aria-label="יש כתובת חדשה"
+              title={`פעיל באתר החדש מ-${new Date(node.new_site_live_at).toLocaleDateString('he-IL')}`}
+              aria-label="פעיל באתר החדש"
             >
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
