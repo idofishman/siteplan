@@ -19,6 +19,8 @@ export default function AdminAccountsPage() {
   const [newName, setNewName] = useState('')
   const [newDomain, setNewDomain] = useState('')
   const [createError, setCreateError] = useState<string | null>(null)
+  const [slugResult, setSlugResult] = useState<Record<string, string>>({})
+  const [slugLoading, setSlugLoading] = useState<string | null>(null)
 
   async function load() {
     const res = await fetch('/api/admin/accounts')
@@ -36,6 +38,24 @@ export default function AdminAccountsPage() {
       body: JSON.stringify({ is_active: nextActive }),
     })
     setAccounts(prev => prev.map(a => a.id === account.id ? { ...a, is_active: nextActive } : a))
+  }
+
+  async function handleGenerateSlugs(accountId: string) {
+    if (!confirm('פעולה זו תיצור גיבוי ותמלא אוטומטית את שדה ה-Slug לעמודים שאין להם כזה. להמשיך?')) return
+    setSlugLoading(accountId)
+    setSlugResult(prev => ({ ...prev, [accountId]: '' }))
+    const res = await fetch('/api/admin/generate-slugs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accountId }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setSlugResult(prev => ({ ...prev, [accountId]: `✓ גיבוי נוצר | עודכנו: ${data.updated} | דולגו: ${data.skipped}` }))
+    } else {
+      setSlugResult(prev => ({ ...prev, [accountId]: `שגיאה: ${data.error}` }))
+    }
+    setSlugLoading(null)
   }
 
   async function handleCreate() {
@@ -126,7 +146,17 @@ export default function AdminAccountsPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-slate-400 text-xs">{new Date(a.created_at).toLocaleDateString('he-IL')}</td>
-                  <td className="px-4 py-3 text-end">
+                  <td className="px-4 py-3 text-end flex flex-col items-end gap-1">
+                    <button
+                      onClick={() => handleGenerateSlugs(a.id)}
+                      disabled={slugLoading === a.id}
+                      className="text-xs text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                    >
+                      {slugLoading === a.id ? 'מייצר...' : 'צור Slugs אוטומטי'}
+                    </button>
+                    {slugResult[a.id] && (
+                      <span className="text-[11px] text-slate-500">{slugResult[a.id]}</span>
+                    )}
                     <button
                       onClick={() => setClearTarget(a)}
                       className="text-xs text-red-500 hover:text-red-700"
