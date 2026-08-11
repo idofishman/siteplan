@@ -65,6 +65,7 @@ const LAW_DEGREE_INDICATORS: Record<string, string> = {
 // Extend this list for each faculty as their slugs become known
 const FACULTY_SLUG_MAP: Record<string, string> = {
   'law':                       'law',
+  'law-school':                'law',
   'faculty-of-law':            'law',
   'mishpatim':                 'law',
   'business-administration':   'business-administration',
@@ -85,7 +86,7 @@ const COLMAN_RULES: SlugRule[] = [
   // Rule 1: URL contains /law/ (faculty context) + last segment is degree indicator
   {
     match: (segments, path) => {
-      if (!path.includes('/law/') && !path.includes('/mishpatim/')) return null
+      if (!path.includes('/law/') && !path.includes('/law-school/') && !path.includes('/mishpatim/')) return null
       const last = segments[segments.length - 1]
       return LAW_DEGREE_INDICATORS[last] ?? null
     },
