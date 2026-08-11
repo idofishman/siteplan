@@ -29,11 +29,12 @@ function buildNewUrlPath(pages: Page[], parentId: string | null, slug: string): 
   while (id) {
     const p = pages.find(x => x.id === id)
     if (!p) break
-    if (p.new_url) parts.unshift(p.new_url)
+    if (p.new_url) parts.unshift(p.new_url.replace(/^\/+|\/+$/g, ''))
     id = p.parent_id
   }
-  if (slug.trim()) parts.push(slug.trim())
-  return parts.join('/')
+  const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '')
+  if (cleanSlug) parts.push(cleanSlug)
+  return parts.filter(Boolean).join('/')
 }
 
 interface ParentPickerProps {
