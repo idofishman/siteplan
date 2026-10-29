@@ -106,6 +106,8 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
       is_deleted: false,
       deleted_at: null,
       is_verified: false,
+      needs_content_update: false,
+      content_update_notes: null,
       new_url: null,
       new_site_live_at: null,
       created_by: null,
