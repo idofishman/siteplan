@@ -74,6 +74,8 @@ export interface Page {
   url: string | null
   url_normalized: string | null
   new_url: string | null
+  needs_content_update: boolean
+  content_update_notes: string | null
   color: string | null
   template: string | null
   status: PageStatus

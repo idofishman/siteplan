@@ -165,6 +165,8 @@ export function AddEditPageModal() {
   const [template, setTemplate] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [isVerified, setIsVerified] = useState(false)
+  const [needsContentUpdate, setNeedsContentUpdate] = useState(false)
+  const [contentUpdateNotes, setContentUpdateNotes] = useState('')
   const [isLiveOnNewSite, setIsLiveOnNewSite] = useState(false)
   const [newSiteLiveAt, setNewSiteLiveAt] = useState<string | null>(null)
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
@@ -181,6 +183,8 @@ export function AddEditPageModal() {
       setTemplate(page?.template ?? null)
       setNotes(page?.notes ?? '')
       setIsVerified(page?.is_verified ?? false)
+      setNeedsContentUpdate(page?.needs_content_update ?? false)
+      setContentUpdateNotes(page?.content_update_notes ?? '')
       setNewSiteLiveAt(page?.new_site_live_at ?? null)
       setIsLiveOnNewSite(!!(page?.new_site_live_at))
       setSelectedParentId(isEdit ? (page?.parent_id ?? null) : addParentId)
@@ -239,6 +243,8 @@ export function AddEditPageModal() {
           template,
           notes: notes.trim() || null,
           is_verified: isVerified,
+          needs_content_update: needsContentUpdate,
+          content_update_notes: needsContentUpdate ? (contentUpdateNotes.trim() || null) : null,
           new_site_live_at: isLiveOnNewSite ? (newSiteLiveAt ?? new Date().toISOString()) : null,
           parent_id: selectedParentId,
         })
@@ -254,6 +260,8 @@ export function AddEditPageModal() {
           template,
           notes: notes.trim() || null,
           is_verified: isVerified,
+          needs_content_update: needsContentUpdate,
+          content_update_notes: needsContentUpdate ? (contentUpdateNotes.trim() || null) : null,
           new_site_live_at: isLiveOnNewSite ? (newSiteLiveAt ?? new Date().toISOString()) : null,
           sort_order: 0,
         })
@@ -446,6 +454,32 @@ export function AddEditPageModal() {
           <span className="text-sm font-medium text-slate-700">סמן כמאושר ✓</span>
           {isVerified && <span className="text-xs text-emerald-600">העמוד מאושר</span>}
         </label>
+
+        {/* Needs content update */}
+        <div className={`flex flex-col gap-2 border rounded-lg px-3 py-2.5 transition-colors ${needsContentUpdate ? 'border-orange-300 bg-orange-50' : 'border-slate-200 bg-slate-50'}`}>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={needsContentUpdate}
+              onChange={e => setNeedsContentUpdate(e.target.checked)}
+              className="w-4 h-4 rounded accent-orange-500"
+            />
+            <span className="text-sm font-medium text-slate-700">האם נדרשים עדכוני תוכן?</span>
+            {needsContentUpdate && (
+              <span className="text-[10px] font-medium text-orange-700 bg-orange-200 rounded-full px-1.5 py-0.5 mr-auto">נדרש עדכון</span>
+            )}
+          </label>
+          {needsContentUpdate && (
+            <textarea
+              value={contentUpdateNotes}
+              onChange={e => setContentUpdateNotes(e.target.value)}
+              rows={3}
+              dir="rtl"
+              placeholder="פרט מה צריך לעדכן בתוכן העמוד..."
+              className="border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-y bg-white"
+            />
+          )}
+        </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

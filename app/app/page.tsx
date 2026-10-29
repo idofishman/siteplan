@@ -21,10 +21,12 @@ export default function AppPage() {
   const [search, setSearch] = useState('')
   const [clicksFilterType, setClicksFilterType] = useState<ClicksFilterType>('gt')
   const [clicksFilterValue, setClicksFilterValue] = useState('')
+  const [showContentUpdateOnly, setShowContentUpdateOnly] = useState(false)
 
   const homepageId = pages.find(p => p.template === 'homepage' && !p.parent_id)?.id
 
   const hasClicksFilter = clicksFilterValue !== '' && !isNaN(Number(clicksFilterValue))
+  const contentUpdateCount = pages.filter(p => p.needs_content_update && !p.is_deleted).length
 
   const exactMatchId = useMemo<string | null>(() => {
     const q = search.trim().toLowerCase()
@@ -44,7 +46,7 @@ export default function AppPage() {
 
   const visibleIds = useMemo<Set<string> | null>(() => {
     const q = search.trim().toLowerCase()
-    if (!q && !hasClicksFilter) return null
+    if (!q && !hasClicksFilter && !showContentUpdateOnly) return null
 
     const parentMap = new Map(pages.map(p => [p.id, p.parent_id]))
     const childrenMap = new Map<string, string[]>()
@@ -70,6 +72,7 @@ export default function AppPage() {
     const candidates = pages.filter(p => {
       const nameMatch = !q || p.name.toLowerCase().includes(q) || (p.url && p.url.toLowerCase().includes(q))
       if (!nameMatch) return false
+      if (showContentUpdateOnly && !p.needs_content_update) return false
       if (!hasClicksFilter) return true
       const clicks = p.url_normalized ? (gscClicks[p.url_normalized] ?? 0) : 0
       return clicksFilterType === 'gt' ? clicks > threshold : clicks < threshold && clicks >= 0
@@ -84,7 +87,7 @@ export default function AppPage() {
       if (q) addDescendants(p.id, visible)
     }
     return visible
-  }, [search, hasClicksFilter, clicksFilterType, clicksFilterValue, pages, gscClicks])
+  }, [search, hasClicksFilter, clicksFilterType, clicksFilterValue, showContentUpdateOnly, pages, gscClicks])
 
   if (!activeAccount) return null
 
@@ -166,6 +169,23 @@ export default function AppPage() {
               </button>
             )}
           </div>
+        )}
+
+        {/* Content update filter — only shown when pages are flagged */}
+        {contentUpdateCount > 0 && (
+          <button
+            onClick={() => setShowContentUpdateOnly(v => !v)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors shrink-0 ${
+              showContentUpdateOnly
+                ? 'border-orange-400 bg-orange-100 text-orange-800 font-medium'
+                : 'border-slate-300 hover:bg-slate-50 text-slate-500'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            נדרש עדכון תוכן ({contentUpdateCount})
+          </button>
         )}
 
         {/* Right: result count + add */}
