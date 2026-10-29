@@ -9,7 +9,7 @@ import { COLORS, STATUS_LABELS } from '@/lib/constants'
 import type { Page, PageStatus } from '@/types'
 
 const STATUSES: PageStatus[] = ['planned', 'existing', 'in_progress', 'needs_review', 'approved', 'deprecated', 'redirect', 'archived']
-const NEW_SITE_BASE = 'https://academy.mly.co.il'
+const NEW_SITE_BASE = 'https://new.colman.ac.il'
 
 function getDescendantIdsFlat(pages: Page[], rootId: string): Set<string> {
   const result = new Set<string>()
@@ -330,7 +330,7 @@ export function AddEditPageModal() {
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
             Slug באתר החדש
-            <span className="text-[10px] font-normal text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">academy.mly.co.il</span>
+            <span className="text-[10px] font-normal text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">new.colman.ac.il</span>
           </label>
           <div className="flex items-center gap-1.5">
             <input
@@ -443,18 +443,6 @@ export function AddEditPageModal() {
           />
         </div>
 
-        {/* Mark Completed */}
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={isVerified}
-            onChange={e => setIsVerified(e.target.checked)}
-            className="w-4 h-4 rounded accent-emerald-600"
-          />
-          <span className="text-sm font-medium text-slate-700">סמן כמאושר ✓</span>
-          {isVerified && <span className="text-xs text-emerald-600">העמוד מאושר</span>}
-        </label>
-
         {/* Needs content update */}
         <div className={`flex flex-col gap-2 border rounded-lg px-3 py-2.5 transition-colors ${needsContentUpdate ? 'border-orange-300 bg-orange-50' : 'border-slate-200 bg-slate-50'}`}>
           <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -480,6 +468,18 @@ export function AddEditPageModal() {
             />
           )}
         </div>
+
+        {/* Mark Completed */}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isVerified}
+            onChange={e => setIsVerified(e.target.checked)}
+            className="w-4 h-4 rounded accent-emerald-600"
+          />
+          <span className="text-sm font-medium text-slate-700">סמן כמאושר ✓</span>
+          {isVerified && <span className="text-xs text-emerald-600">העמוד מאושר</span>}
+        </label>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
