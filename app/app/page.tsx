@@ -28,6 +28,13 @@ export default function AppPage() {
   const hasClicksFilter = clicksFilterValue !== '' && !isNaN(Number(clicksFilterValue))
   const contentUpdateCount = pages.filter(p => p.needs_content_update && !p.is_deleted).length
 
+  const activePages = pages.filter(p => !p.is_deleted)
+  const totalCount = activePages.length
+  const verifiedCount = activePages.filter(p => p.is_verified).length
+  const liveCount = activePages.filter(p => !!p.new_site_live_at).length
+  const verifiedPct = totalCount > 0 ? (verifiedCount / totalCount) * 100 : 0
+  const livePct = totalCount > 0 ? (liveCount / totalCount) * 100 : 0
+
   const exactMatchId = useMemo<string | null>(() => {
     const q = search.trim().toLowerCase()
     if (!q) return null
@@ -203,6 +210,38 @@ export default function AppPage() {
       </div>
 
       <BulkToolbar />
+
+      {/* Progress bar */}
+      {totalCount > 0 && (
+        <div className="px-4 py-2 border-b border-slate-100 bg-white flex flex-col gap-1.5">
+          {/* Live on new site */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500 w-32 shrink-0 text-end">פעיל באתר החדש</span>
+            <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-pink-400 transition-all duration-500"
+                style={{ width: `${livePct}%` }}
+              />
+            </div>
+            <span className="text-[11px] font-medium text-pink-600 w-20 shrink-0">
+              {livePct.toFixed(1)}% <span className="text-slate-400 font-normal">({liveCount}/{totalCount})</span>
+            </span>
+          </div>
+          {/* Verified / completed */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500 w-32 shrink-0 text-end">מאושר כהושלם</span>
+            <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+                style={{ width: `${verifiedPct}%` }}
+              />
+            </div>
+            <span className="text-[11px] font-medium text-emerald-600 w-20 shrink-0">
+              {verifiedPct.toFixed(1)}% <span className="text-slate-400 font-normal">({verifiedCount}/{totalCount})</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="px-2 py-2">
         <PageTree accountId={activeAccount.id} visibleIds={visibleIds} searchQuery={search.trim() || undefined} exactMatchId={exactMatchId} />
